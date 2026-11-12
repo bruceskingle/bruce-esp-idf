@@ -9,12 +9,12 @@ use embedded_graphics::{
     primitives::{PrimitiveStyle, Rectangle},
     text::{Alignment, Text},
 };
-use sparko_embedded_std::config::{ConfigSpec, FeatureConfig};
-use sparko_embedded_std::feature::FeatureDescriptor;
-use sparko_embedded_std::graphics::DisplayManager;
-use sparko_embedded_std::platform::PlatformInitializer;
-use sparko_embedded_std::task::scheduler::ScheduledTask;
-use sparko_esp_idf::{BoardDisplayManager, Esp32Platform, Esp32PlatformInitializer, Feature};
+use bruce_embedded_std::config::{ConfigSpec, FeatureConfig};
+use bruce_embedded_std::feature::FeatureDescriptor;
+use bruce_embedded_std::graphics::DisplayManager;
+use bruce_embedded_std::platform::PlatformInitializer;
+use bruce_embedded_std::task::scheduler::ScheduledTask;
+use bruce_esp_idf::{BoardDisplayManager, Esp32Platform, Esp32PlatformInitializer, Feature};
 
 #[derive(FeatureConfig)]
 #[config(label = "Edge Test")]

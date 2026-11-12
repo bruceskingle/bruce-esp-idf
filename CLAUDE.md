@@ -1,20 +1,22 @@
-# sparko-embedded-std
+# bruce-esp-idf
 
-A Rust `std` platform for ESP32 boards (on `esp-idf-svc`/`esp-idf-hal`), built as a plugin framework: a board's
-`main.rs` builds an `Esp32Platform` and adds the *Features* it wants. See README.md for the concepts; parts of it
-(the `examples` directory, links to `sparko-esp-idf` and `sparko-embedded-example`) predate the mono repo. Those repos
-are retired: everything is here.
+Bruce's ESP-IDF Platform: a Rust `std` platform for ESP32 boards (on `esp-idf-svc`/`esp-idf-hal`), built as a plugin
+framework: a board's `main.rs` builds an `Esp32Platform` and adds the *Features* it wants. See README.md for the
+concepts. It was split out of `sparko-embedded-std` on 12 November 2026, with three repositories checked out next to
+it: `bruce-embedded-std`, the hardware agnostic code, `bruce-embedded-firmware-record` and `bruce-embedded-flash`. The
+rule of the split: code which would work the same on any hardware with std goes in bruce-embedded-std, code which
+needs an ESP32 or ESP-IDF here; this depends on bruce-embedded-std, never the other way round.
 
 ## Layout
 
-- `libs/sparko-embedded-std` - hardware independent core: config (`TypedValue`, `ConfigSpec`, `FeatureConfig`),
+- `../bruce-embedded-std/bruce-embedded-std` - hardware independent core: config (`TypedValue`, `ConfigSpec`, `FeatureConfig`),
   `ConfigManager`, the cron `TaskScheduler`, the `HttpServerManager` trait, `DisplayManager`, graphics (clock),
   time zones, `Listener`.
-- `libs/sparko-esp-idf` - the ESP32 implementation: `Esp32Platform` (builder, `Remainder` of unused peripherals per
+- `bruce-esp-idf` - the ESP32 implementation: `Esp32Platform` (builder, `Remainder` of unused peripherals per
   board, runner), the `Feature`/`DynFeature` traits, the Core feature (WiFi, AP mode captive portal, HTTP server,
   mDNS, SNTP), config in NVS, LEDs, smart LEDs (RMT or SPI), MIPI DSI displays, touch, IMU/AHRS, and the features in
   `src/features` (AnalogClock, BinaryClock, DynDns2).
-- `libs/feature-config-derive` - `#[derive(FeatureConfig)]` for feature config structs (`#[config(len = N)]` for
+- `../bruce-embedded-std/bruce-embedded-std-derive` - `#[derive(FeatureConfig)]` for feature config structs (`#[config(len = N)]` for
   strings).
 - `boards/<board>` - one binary crate per board, each its own Cargo project (not a workspace member), with its own
   `.cargo/config.toml` (target, `MCU`, ESP-IDF version), `rust-toolchain.toml` (`esp`), `sdkconfig.defaults` and
@@ -36,7 +38,7 @@ Board names are the maker, the chip, then the maker's model with its size withou
 ESP32-S3-RLCD-4.2 is `wave-esp32s3-rlcd-42`; an unbranded board starts with its chip, e.g. `esp32c3-supermini`.
 Capture firmware features in marco-sparko use the same names.
 
-Each board crate selects exactly one `board-*` feature of `sparko-esp-idf`, which turns on the functional features
+Each board crate selects exactly one `board-*` feature of `bruce-esp-idf`, which turns on the functional features
 (`display`, `rgb-led`, `smart-led-spi`, ...) its hardware has. Code behind a functional feature only compiles for
 boards which have it.
 
@@ -67,15 +69,15 @@ This is the model every piece of on-board hardware follows, so that the platform
 - Build a board from its own directory: `cd boards/cyd-esp32-28 && cargo build --release`. Always `--release`. Never build the
   libs on their own or several boards as one workspace: the target and features come from the board.
 - `./build.sh` builds every board in turn (slow), or those named, e.g. `./build.sh seeed-esp32c6-xiao`, and copies each
-  demo to the shared firmware folder as `bruce-embedded-std/dev/`, see `tools/bruce-embedded-firmware`.
+  demo to the shared firmware folder as `bruce-esp-idf/dev/`, see bruce-embedded-flash's `bruce-embedded-firmware`.
 - Flash and monitor: `cargo run --release` in the board directory, which also keeps the ELF in the shared firmware
-  folder's `bruce-embedded-std/dev/`. The runner is `bruce-embedded-flash flash --monitor --keep-as bruce-embedded-std`
-  (`tools/bruce-embedded-flash`, install it with `cargo install --path tools/bruce-embedded-flash`), which flashes only
+  folder's `bruce-esp-idf/dev/`. The runner is `bruce-embedded-flash flash --monitor --keep-as bruce-esp-idf`
+  (from `../bruce-embedded-flash`, install it with `cargo install --path bruce-embedded-flash` there), which flashes only
   firmware built for the board on the port, from the firmware record each image carries
-  (`libs/bruce-embedded-firmware-record`, added by `.with_firmware(sparko_esp_idf::firmware!())`), see its README. Never
+  (`../bruce-embedded-firmware-record`, added by `.with_firmware(bruce_esp_idf::firmware!())`), see its README. Never
   flash with espflash directly, and never pass `--confirm-board` on the owner's behalf. Ask before flashing: it needs
   the board plugged in and replaces what is on it.
-- `tools/` holds host programs, each its own Cargo project built with the default toolchain, not `esp`:
+- `../bruce-embedded-flash` holds the host programs, a workspace built with the default toolchain, not `esp`:
   `bruce-embedded-firmware`, the shared firmware folder, `<data dir>/bruce-embedded-std/firmware/<repo>/<version>/`,
   e.g. `bruce-smart-home/dev/` for marco-sparko's capture builds, and later the downloader from GitHub releases,
   `bruce-embedded-flash`, the flashing library and command line, and `bruce-embedded-flash-ui`, the Dioxus component,
@@ -86,14 +88,14 @@ This is the model every piece of on-board hardware follows, so that the platform
 
 ## rust-analyzer
 
-The VS Code workspace `sparko-platform.code-workspace` lists one board in `rust-analyzer.linkedProjects` at a time
-(plus `libs/sparko-embedded-std`), so that only the platform code that board enables is analysed and the other boards'
-hardware does not show as errors. Switch the linked board to work on another. Don't link `libs/sparko-esp-idf` on its
+The VS Code workspace `bruce-esp-idf.code-workspace` lists one board in `rust-analyzer.linkedProjects` at a time
+(plus `../bruce-embedded-std`), so that only the platform code that board enables is analysed and the other boards'
+hardware does not show as errors. Switch the linked board to work on another. Don't link `bruce-esp-idf` on its
 own (it gives odd errors).
 
 ## Writing a feature
 
-Implement `sparko_esp_idf::Feature`: `init` returns a `FeatureDescriptor` (name and `Config::to_config_spec()`), and
+Implement `bruce_esp_idf::Feature`: `init` returns a `FeatureDescriptor` (name and `Config::to_config_spec()`), and
 `start` gets the platform, the initializer and the typed config. Do periodic work by adding a `ScheduledTask` with a
 cron spec (seconds field first, e.g. `"0 */5 * * * *"`). Features can live outside the libs, e.g. in a board's
 `main.rs` (see wave-esp32c6-touch-147). The scheduler runs every task in turn on one thread, so a slow task (e.g. an
@@ -114,10 +116,10 @@ tried twice and does not work with the ESP HTTP server and Rust's type system: d
 
 When a board's `sdkconfig.defaults` sets `CONFIG_ESP_HTTPS_SERVER_ENABLE=y` (with the mbedtls dynamic buffer options,
 see marco-sparko's `capture/sdkconfig.defaults`), the platform runs an HTTPS API on port 443 once on the Wi-Fi
-(`api.rs`, cfg `esp_idf_esp_https_server_enable`, made visible by `sparko-esp-idf/build.rs`), next to the HTTP server,
+(`api.rs`, cfg `esp_idf_esp_https_server_enable`, made visible by `bruce-esp-idf/build.rs`), next to the HTTP server,
 which stays for the captive portal and `/config`. The device makes an EC P-256 key and self-signed certificate on
 first boot and keeps them in the `device` NVS namespace (`identity.rs`); its ID is the Wi-Fi MAC. Endpoints:
-`GET /api/info`, `GET`/`POST /api/config` (JSON from `ConfigSpec`, `config_json.rs` in sparko-embedded-std; secrets
+`GET /api/info`, `GET`/`POST /api/config` (JSON from `ConfigSpec`, `config_json.rs` in bruce-embedded-std; secrets
 only as `isSet`; POST changes only what it names, checks everything before saving, null clears an optional setting,
 takes effect after a restart), `GET /api/memory` (heap by kind, task stack high-water marks with
 `CONFIG_FREERTOS_USE_TRACE_FACILITY`), `GET /api/starts` (each start's time and reset reason, the latest 30 logged in NVS, the device's own, before the
@@ -148,5 +150,5 @@ tens of KB of heap each on the CYD (no PSRAM), which is why reads use HTTP; chan
 - This repo is developed alongside `../marco-sparko`, a desktop app which reads data from ESP32 "Capture Devices"
   built on this platform, whose firmware is in marco-sparko's `capture/`. Claude's memory of each repo is kept with it,
   and marco-sparko's, the workspace's, lists this one's too.
-- The device pages' look, `libs/sparko-embedded-std/src/http_server.rs`, is just what could be written by hand; the
+- The device pages' look, `../bruce-embedded-std/bruce-embedded-std/src/http_server.rs`, is just what could be written by hand; the
   owner would prefer a dark theme, when they are redesigned, which is not planned yet.

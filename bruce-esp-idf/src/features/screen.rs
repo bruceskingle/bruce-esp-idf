@@ -3,7 +3,7 @@
 //! platform adds it on a board whose backlight it drives, see the display-axs15231b and mipi-dsi-display features, e.g.
 //! the Guition JC3248W535C and the CYD, and applies it as the board starts, see Esp32PlatformBuilder.
 
-use sparko_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
+use bruce_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
 
 use crate::{Esp32Platform, Esp32PlatformInitializer, Feature, FeatureDescriptor};
 

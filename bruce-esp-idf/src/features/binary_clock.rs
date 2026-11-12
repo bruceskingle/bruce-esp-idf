@@ -10,10 +10,10 @@ use chrono::Timelike;
 use esp_idf_hal::spi::SpiDriver;
 use log::info;
 use rgb::RGB8;
-use sparko_embedded_std::config::ConfigSpec;
-use sparko_embedded_std::config::FeatureConfig;
-use sparko_embedded_std::platform::PlatformInitializer;
-use sparko_embedded_std::task::scheduler::ScheduledTask;
+use bruce_embedded_std::config::ConfigSpec;
+use bruce_embedded_std::config::FeatureConfig;
+use bruce_embedded_std::platform::PlatformInitializer;
+use bruce_embedded_std::task::scheduler::ScheduledTask;
 use std::borrow::Borrow;
 
 const HIGH: u8 = 16;

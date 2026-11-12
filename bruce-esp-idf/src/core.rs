@@ -3,20 +3,20 @@ use std::sync::mpsc::Receiver;
 
 use chrono::Local;
 use log::info;
-use sparko_embedded_std::config::FeatureConfig;
-use sparko_embedded_std::{
+use bruce_embedded_std::config::FeatureConfig;
+use bruce_embedded_std::{
     config::{ConfigSpec, ConfigSpecValue, TypedValue},
     feature::FeatureDescriptor,
     task::scheduler::ScheduledTask,
     tz::TimeZone,
 };
 
-use sparko_embedded_std::mdns::MdnsResponder;
+use bruce_embedded_std::mdns::MdnsResponder;
 use crate::{
     Feature,
     esp32_platform::{Esp32Platform, Esp32PlatformInitializer},
 };
-use sparko_embedded_std::platform::PlatformInitializer;
+use bruce_embedded_std::platform::PlatformInitializer;
 
 pub const CORE_FEATURE_NAME: &str = "core";
 pub const SSID_LEN: usize = 32;

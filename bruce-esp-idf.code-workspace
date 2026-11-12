@@ -1,4 +1,9 @@
 {
+	// A workspace for working on Bruce's ESP-IDF Platform: this repository, each board as a folder of its own, and the
+	// repositories next to it which it builds with, see the README's Development section. rust-analyzer checks one board
+	// at a time, the one rust-analyzer.linkedProjects names, below; switch boards with its commented out lines. The
+	// marco-sparko, cache, bruce-db, bruce-util-progress and bruce-method-release folders are the author's own setup: to
+	// look at this repository alone, comment them out, and any of the others not checked out next to it.
 	"folders": [
 		{
 			"name": "marco-sparko",
@@ -9,46 +14,55 @@
 			"path": "."
 		},
 		{
-			"name": "feature-config-derive",
-			"path": "libs/feature-config-derive"
-		},
-		{
-			"name": "sparko-embedded-std",
-			"path": "libs/sparko-embedded-std"
-		},
-		{
-			"name": "sparko-esp-idf",
-			"path": "libs/sparko-esp-idf"
-		},
-		{
-			"name": "esp32-devkit-v1",
-			"path": "boards/esp32-devkit-v1"
+			"name": "bruce-esp-idf",
+			"path": "bruce-esp-idf"
 		},
 		{
 			"name": "cyd-esp32-28",
 			"path": "boards/cyd-esp32-28"
 		},
 		{
+			"name": "esp32-devkit-v1",
+			"path": "boards/esp32-devkit-v1"
+		},
+		{
 			"name": "esp32c3-supermini",
 			"path": "boards/esp32c3-supermini"
 		},
 		{
-			"name": "wave-esp32c6-touch-147",
-			"path": "boards/wave-esp32c6-touch-147"
-		},
-		{
-			"name": "wave-esp32c6-lcd-147",
-			"path": "boards/wave-esp32c6-lcd-147"
+			"name": "guition-jc3248w535c",
+			"path": "boards/guition-jc3248w535c"
 		},
 		{
 			"name": "seeed-esp32c6-xiao",
 			"path": "boards/seeed-esp32c6-xiao"
 		},
 		{
-			"path": "../../.marco-sparko-cache"
+			"name": "wave-esp32c6-lcd-147",
+			"path": "boards/wave-esp32c6-lcd-147"
 		},
 		{
+			"name": "wave-esp32c6-touch-147",
+			"path": "boards/wave-esp32c6-touch-147"
+		},
+		{
+			"name": "wave-esp32s3-rlcd-42",
 			"path": "boards/wave-esp32s3-rlcd-42"
+		},
+		{
+			"name": "bruce-embedded-std",
+			"path": "../bruce-embedded-std"
+		},
+		{
+			"name": "bruce-embedded-firmware-record",
+			"path": "../bruce-embedded-firmware-record"
+		},
+		{
+			"name": "bruce-embedded-flash",
+			"path": "../bruce-embedded-flash"
+		},
+		{
+			"path": "../../.marco-sparko-cache"
 		},
 		{
 			"path": "../bruce-db"
@@ -63,7 +77,7 @@
 	"settings": {
 		"explorer.autoReveal": false,
 		"files.exclude": {
-			"libs": true,
+			"bruce-esp-idf": true,
 			"boards": true,
 			// ".vscode": true,
 			// "target": true
@@ -76,9 +90,9 @@
 			// "boards/wave-esp32c6-lcd-147/Cargo.toml",
 			// "boards/wave-esp32c6-touch-147/Cargo.toml",
 			// "boards/seeed-esp32c6-xiao/Cargo.toml",
-			"libs/sparko-embedded-std/Cargo.toml", // This is needed
+			"../bruce-embedded-std/Cargo.toml", // This is needed
 			"../marco-sparko/Cargo.toml",
-			// "libs/sparko-esp-idf/Cargo.toml", this causes weird errors but I dont understand why
+			// "bruce-esp-idf/Cargo.toml", this causes weird errors but I dont understand why
 		],
 		// // "rust-analyzer.cargo.features": "all",
 		// // "rust-analyzer.cargo.features": ["board-seeed-esp32c6-xiao"],
@@ -138,7 +152,7 @@
 		"version": "2.0.0",
 		"tasks": [
 			{
-				// Builds the XIAO ESP32-C6's demo and copies it to the shared firmware folder's bruce-embedded-std/dev/, where
+				// Builds the XIAO ESP32-C6's demo and copies it to the shared firmware folder's bruce-esp-idf/dev/, where
 				// the flasher finds it: a plain cargo build leaves it only in the board's target/.
 				"label": "Firmware: Build XIAO C6",
 				"type": "shell",
@@ -153,7 +167,7 @@
 		"configurations": [
 			{
 				// The stand alone flasher window, after building the XIAO C6's firmware into the shared folder, to flash it
-				// from bruce-embedded-std's dev version there.
+				// from bruce-esp-idf's dev version there.
 				"type": "lldb",
 				"request": "launch",
 				"name": "Flasher: XIAO C6 firmware",
@@ -161,14 +175,14 @@
 				"cargo": {
 					"args": [
 						"build",
-						"--manifest-path=${workspaceFolder:Root Files}/tools/bruce-embedded-flash-ui/Cargo.toml",
+						"--manifest-path=${workspaceFolder:bruce-embedded-flash}/bruce-embedded-flash-ui/Cargo.toml",
 						"--features=desktop",
 						"--bin=bruce-embedded-flash-gui"
 					],
 					"filter": { "name": "bruce-embedded-flash-gui", "kind": "bin" }
 				},
 				"args": [],
-				"cwd": "${workspaceFolder:Root Files}/tools/bruce-embedded-flash-ui"
+				"cwd": "${workspaceFolder:bruce-embedded-flash}/bruce-embedded-flash-ui"
 			}
 		]
 	}

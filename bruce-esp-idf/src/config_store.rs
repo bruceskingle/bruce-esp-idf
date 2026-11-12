@@ -4,7 +4,7 @@ use std::sync::Arc;
 use croner::Cron;
 use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use log::info;
-use sparko_embedded_std::{
+use bruce_embedded_std::{
     config::{
         ConfigSpecValue, ConfigStore, ConfigStoreFactory, EnabledState, TypedValue, format_rgb8,
     },
@@ -230,7 +230,7 @@ impl ConfigStore for EspConfigStore {
                     config_value,
                     self.nvs_namespace.get_str(name, buf.as_mut_slice()),
                 ) {
-                    if let Ok(color) = sparko_embedded_std::config::parse_rgb8(str) {
+                    if let Ok(color) = bruce_embedded_std::config::parse_rgb8(str) {
                         TypedValue::Color(Some(color))
                     } else {
                         info!("Failed to parse color value for {}: {}", name, str);

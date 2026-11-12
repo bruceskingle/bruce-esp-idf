@@ -8,12 +8,12 @@ use embedded_graphics::{
     primitives::Rectangle,
 };
 use log::info;
-use sparko_embedded_std::{
+use bruce_embedded_std::{
     DisplayOrientation, config::ConfigSpec, feature::FeatureDescriptor, graphics::DisplayManager,
     listener::Listener, task::scheduler::ScheduledTask,
 };
-use sparko_embedded_std::{config::FeatureConfig, platform::PlatformInitializer};
-use sparko_esp_idf::{
+use bruce_embedded_std::{config::FeatureConfig, platform::PlatformInitializer};
+use bruce_esp_idf::{
     Esp32Platform, Feature,
     features::{analog_clock::AnalogClock, binary_clock::BinaryClock, dyndns2::DynDns2},
     touch::axs5106l::TouchPoint,
@@ -34,8 +34,8 @@ impl Feature for ImuFeature {
     type Config = ImuConfig;
     fn init(
         &self,
-        _init: &mut sparko_esp_idf::Esp32PlatformInitializer,
-    ) -> anyhow::Result<sparko_embedded_std::feature::FeatureDescriptor> {
+        _init: &mut bruce_esp_idf::Esp32PlatformInitializer,
+    ) -> anyhow::Result<bruce_embedded_std::feature::FeatureDescriptor> {
         info!("ImuFeature::init");
 
         Ok(FeatureDescriptor {
@@ -46,8 +46,8 @@ impl Feature for ImuFeature {
 
     fn start(
         &mut self,
-        sparko: &mut sparko_esp_idf::Esp32Platform,
-        initializer: &mut sparko_esp_idf::Esp32PlatformInitializer,
+        sparko: &mut bruce_esp_idf::Esp32Platform,
+        initializer: &mut bruce_esp_idf::Esp32PlatformInitializer,
         _config: ImuConfig,
     ) -> anyhow::Result<()> {
         info!("ImuFeature::start");
@@ -90,7 +90,7 @@ impl<DM: DisplayManager + Send + 'static> Listener<TouchPoint> for TouchListener
         use embedded_graphics::Drawable;
 
         let mut manager = self.display_manager.lock().unwrap();
-        let color = manager.map_color(&sparko_embedded_std::graphics::Color::Green);
+        let color = manager.map_color(&bruce_embedded_std::graphics::Color::Green);
         let target = manager.display();
 
         embedded_graphics::Pixel(
@@ -119,7 +119,7 @@ impl Feature for TouchDrawFeature {
     type Config = TouchDrawConfig;
     fn init(
         &self,
-        _init: &mut sparko_esp_idf::Esp32PlatformInitializer,
+        _init: &mut bruce_esp_idf::Esp32PlatformInitializer,
     ) -> anyhow::Result<FeatureDescriptor> {
         info!("TouchListener::init");
 
@@ -131,8 +131,8 @@ impl Feature for TouchDrawFeature {
 
     fn start(
         &mut self,
-        sparko: &mut sparko_esp_idf::Esp32Platform,
-        _initializer: &mut sparko_esp_idf::Esp32PlatformInitializer,
+        sparko: &mut bruce_esp_idf::Esp32Platform,
+        _initializer: &mut bruce_esp_idf::Esp32PlatformInitializer,
         _config: TouchDrawConfig,
     ) -> anyhow::Result<()> {
         let listener: Arc<dyn Listener<TouchPoint>> = Arc::new(TouchListener {
@@ -148,7 +148,7 @@ impl Feature for TouchDrawFeature {
 fn main() -> anyhow::Result<()> {
     let (builder, remainder) = Esp32Platform::builder()?;
 
-    let smart_leds = sparko_esp_idf::smart_led::new(remainder.rmt.channel0, remainder.gpio6, 64)?;
+    let smart_leds = bruce_esp_idf::smart_led::new(remainder.rmt.channel0, remainder.gpio6, 64)?;
 
     let sparko_esp32 = builder
         .with_feature(Box::new(TouchDrawFeature::new()))?
@@ -174,7 +174,7 @@ fn main() -> anyhow::Result<()> {
         ))?
         .with_display_orientation(DisplayOrientation::Rotate270)?
         .with_feature(Box::new(BinaryClock::new_rmt(smart_leds)))?
-        .with_firmware(sparko_esp_idf::firmware!())
+        .with_firmware(bruce_esp_idf::firmware!())
         .build()?;
 
     sparko_esp32.start()

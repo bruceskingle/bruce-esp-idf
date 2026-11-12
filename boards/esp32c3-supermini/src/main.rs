@@ -4,7 +4,7 @@ use esp_idf_hal::{
     units::Hertz,
 };
 use log::info;
-use sparko_esp_idf::{
+use bruce_esp_idf::{
     Esp32Platform,
     features::{binary_clock::BinaryClock, dyndns2::DynDns2},
     smart_led::SmartLedsSpi,
@@ -60,7 +60,7 @@ fn run() -> anyhow::Result<()> {
     //     // Some(peripherals.pins.gpio_sdi_mosi),   //SDI / MOSI
     //     None::<AnyIOPin>,              //SDI / MOSI
     //     &SpiDriverConfig::new()
-    //         .dma(Dma::Auto(sparko_esp_idf::binary_clock_feature::required_spi_transfer_size()))
+    //         .dma(Dma::Auto(bruce_esp_idf::binary_clock_feature::required_spi_transfer_size()))
     // )?;
 
     // // let driver = remainder.spi2_driver()?.as_ref().unwrap();
@@ -77,7 +77,7 @@ fn run() -> anyhow::Result<()> {
     //         .queue_size(1),
     // )?;
 
-    let smart_leds = sparko_esp_idf::smart_led::new(
+    let smart_leds = bruce_esp_idf::smart_led::new(
         remainder.spi2,
         remainder.gpio_sclk,     //SCLK
         remainder.gpio_sdo_miso, //SDO / MISO
@@ -89,7 +89,7 @@ fn run() -> anyhow::Result<()> {
         .with_feature(Box::new(DynDns2::new()?))?
         // .with_feature(Box::new(BinaryClock::new_rmt(remainder.rmt.ok_or(anyhow::format_err!("RMT unavailable"))?.channel0, remainder.gpio10.take().ok_or(anyhow::format_err!("GPIO 10 unavailable"))?)))?
         .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
-        .with_firmware(sparko_esp_idf::firmware!())
+        .with_firmware(bruce_esp_idf::firmware!())
         .build()?;
 
     // let mut features = Vec::<Box<dyn Feature>>::new();

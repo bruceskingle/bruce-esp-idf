@@ -1,4 +1,4 @@
-use sparko_esp_idf::{
+use bruce_esp_idf::{
     features::{binary_clock::BinaryClock, dyndns2::DynDns2},
     Esp32Platform,
 };
@@ -11,11 +11,11 @@ fn main() -> anyhow::Result<()> {
     //     .build()?;
     let (builder, remainder) = Esp32Platform::builder()?;
 
-    let smart_leds = sparko_esp_idf::smart_led::new(remainder.rmt.channel0, remainder.gpio21, 64)?;
+    let smart_leds = bruce_esp_idf::smart_led::new(remainder.rmt.channel0, remainder.gpio21, 64)?;
     let mut sparko_esp32 = builder
         .with_feature(Box::new(DynDns2::new()?))?
         .with_feature(Box::new(BinaryClock::new_rmt(smart_leds)))?
-        .with_firmware(sparko_esp_idf::firmware!())
+        .with_firmware(bruce_esp_idf::firmware!())
         .build()?;
 
     // let mut features = Vec::<Box<dyn Feature>>::new();

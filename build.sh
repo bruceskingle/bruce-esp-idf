@@ -1,6 +1,6 @@
 #!/bin/zsh
 # Builds every board's demo, or those named, e.g. ./build.sh seeed-esp32c6-xiao, and copies each to the shared firmware
-# folder as bruce-embedded-std's dev version, see tools/bruce-embedded-firmware, where bruce-embedded-flash's window
+# folder as bruce-esp-idf's dev version, see bruce-embedded-firmware in bruce-embedded-flash, where its window
 # and apps which flash boards, e.g. Marco Sparko, find it.
 set -e          # exit on error
 set -u          # exit on undefined variable
@@ -14,7 +14,7 @@ elif [[ "$(uname)" = Darwin ]]; then
 else
 	folder="${XDG_DATA_HOME:-$HOME/.local/share}/bruce-embedded-std/firmware"
 fi
-dev="$folder/bruce-embedded-std/dev"
+dev="$folder/bruce-esp-idf/dev"
 mkdir -p "$dev"
 
 echo Build all...

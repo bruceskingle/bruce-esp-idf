@@ -2,7 +2,7 @@ use esp_idf_hal::gpio::OutputPin;
 use esp_idf_hal::gpio::PinDriver;
 use std::sync::{Arc, Mutex};
 
-use sparko_embedded_std::Status;
+use bruce_embedded_std::Status;
 
 use crate::led::LedManager;
 

@@ -1,12 +1,12 @@
-use sparko_esp_idf::features::analog_clock::AnalogClock;
-use sparko_esp_idf::features::binary_clock::BinaryClock;
-use sparko_esp_idf::features::dyndns2::DynDns2;
-use sparko_esp_idf::Esp32Platform;
+use bruce_esp_idf::features::analog_clock::AnalogClock;
+use bruce_esp_idf::features::binary_clock::BinaryClock;
+use bruce_esp_idf::features::dyndns2::DynDns2;
+use bruce_esp_idf::Esp32Platform;
 
 fn main() -> anyhow::Result<()> {
     let (builder, remainder) = Esp32Platform::builder()?;
 
-    let smart_leds = sparko_esp_idf::smart_led::new(
+    let smart_leds = bruce_esp_idf::smart_led::new(
         remainder.spi3,
         remainder.gpio27, //SCLK
         remainder.gpio22, //SDO / MISO
@@ -17,8 +17,8 @@ fn main() -> anyhow::Result<()> {
         .with_feature(Box::new(DynDns2::new()?))?
         .with_feature(Box::new(AnalogClock::builder().build()?))?
         .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
-        .with_display_orientation(sparko_embedded_std::DisplayOrientation::Rotate0)?
-        .with_firmware(sparko_esp_idf::firmware!())
+        .with_display_orientation(bruce_embedded_std::DisplayOrientation::Rotate0)?
+        .with_firmware(bruce_esp_idf::firmware!())
         .build()?;
 
     sparko_esp32.start()

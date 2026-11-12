@@ -3,8 +3,8 @@ target = "xtensa-esp32-espidf"
 
 [target.'cfg(target_os = "espidf")']
 linker = "ldproxy"
-# Flashes only firmware built for the board on the port, see tools/bruce-embedded-flash in sparko-embedded-std.
-runner = "bruce-embedded-flash flash --monitor --keep-as bruce-embedded-std"
+# Flashes only firmware built for the board on the port, see bruce-embedded-flash, in the repository next to this one.
+runner = "bruce-embedded-flash flash --monitor --keep-as bruce-esp-idf"
 rustflags = [ "--cfg",  "espidf_time64"]
 
 [unstable]

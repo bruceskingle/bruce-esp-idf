@@ -2,8 +2,8 @@ use embedded_graphics::{
     prelude::{Point, Size},
     primitives::Rectangle,
 };
-use sparko_embedded_std::DisplayOrientation;
-use sparko_esp_idf::{
+use bruce_embedded_std::DisplayOrientation;
+use bruce_esp_idf::{
     Esp32Platform,
     features::{analog_clock::AnalogClock, binary_clock::BinaryClock, dyndns2::DynDns2},
 };
@@ -31,7 +31,7 @@ fn run() -> anyhow::Result<()> {
 
     let (builder, remainder) = Esp32Platform::builder()?;
 
-    let smart_leds = sparko_esp_idf::smart_led::new(
+    let smart_leds = bruce_esp_idf::smart_led::new(
         remainder.rmt.channel0,
         // remainder.spi3,
         remainder.gpio5,
@@ -61,7 +61,7 @@ fn run() -> anyhow::Result<()> {
         ))?
         .with_display_orientation(DisplayOrientation::Rotate270)?
         .with_feature(Box::new(BinaryClock::new_rmt(smart_leds)))?
-        .with_firmware(sparko_esp_idf::firmware!())
+        .with_firmware(bruce_esp_idf::firmware!())
         .build()?;
 
     // let mut features = Vec::<Box<dyn Feature>>::new();

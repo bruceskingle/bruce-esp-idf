@@ -8,12 +8,12 @@ use croner::Cron;
 use esp_idf_svc::http::Method;
 use esp_idf_svc::http::client::EspHttpConnection;
 use log::info;
-use sparko_embedded_std::config::ConfigSpec;
-use sparko_embedded_std::config::ConfigSpecValue;
-use sparko_embedded_std::config::FeatureConfig;
-use sparko_embedded_std::config::TypedValue;
-use sparko_embedded_std::platform::PlatformInitializer;
-use sparko_embedded_std::task::scheduler::ScheduledTask;
+use bruce_embedded_std::config::ConfigSpec;
+use bruce_embedded_std::config::ConfigSpecValue;
+use bruce_embedded_std::config::FeatureConfig;
+use bruce_embedded_std::config::TypedValue;
+use bruce_embedded_std::platform::PlatformInitializer;
+use bruce_embedded_std::task::scheduler::ScheduledTask;
 
 use crate::Esp32Platform;
 use crate::Esp32PlatformInitializer;

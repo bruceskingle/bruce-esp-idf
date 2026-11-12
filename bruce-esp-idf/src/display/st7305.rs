@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use embedded_graphics::{pixelcolor::BinaryColor, prelude::*};
 use esp_idf_hal::gpio::{Output, PinDriver};
-use sparko_embedded_std::graphics::{Color, Console, DisplayManager};
+use bruce_embedded_std::graphics::{Color, Console, DisplayManager};
 
 pub const WIDTH: u32 = 400;
 pub const HEIGHT: u32 = 300;

@@ -14,8 +14,8 @@ use embedded_graphics::{
     primitives::{Circle, PrimitiveStyle},
     text::Text,
 };
-use sparko_embedded_std::listener::Listener;
-use sparko_esp_idf::{BoardDisplayManager, Esp32Platform, features::analog_clock::AnalogClock, touch::TouchPoint};
+use bruce_embedded_std::listener::Listener;
+use bruce_esp_idf::{BoardDisplayManager, Esp32Platform, features::analog_clock::AnalogClock, touch::TouchPoint};
 
 /// Draws a yellow dot where the screen is touched, so that a finger drawn across it leaves a trail under it if the
 /// touch's coordinates are right.
@@ -42,7 +42,7 @@ fn main() -> anyhow::Result<()> {
             let display_manager = sparko.display_manager.clone();
             let sd_card = sparko.sd_card();
             Ok(Box::new(move || {
-                let text = match (&sd_card, sparko_esp_idf::sd_card::space()) {
+                let text = match (&sd_card, bruce_esp_idf::sd_card::space()) {
                     (Ok(_), Some((total, free))) => format!("SD {:.1} GB, {:.1} GB free", total as f64 / 1e9, free as f64 / 1e9),
                     (Ok(_), None) => "SD card cannot be read".to_string(),
                     (Err(error), _) => format!("No SD card: {error}"),
@@ -53,7 +53,7 @@ fn main() -> anyhow::Result<()> {
                 Ok(())
             }))
         })
-        .with_firmware(sparko_esp_idf::firmware!())
+        .with_firmware(bruce_esp_idf::firmware!())
         .build()?;
 
     // The touch driver keeps only a weak reference to its listeners, so this one is kept for as long as main runs.

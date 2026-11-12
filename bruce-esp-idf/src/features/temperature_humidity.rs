@@ -4,9 +4,9 @@
 //! thermometer which can be trusted, after the board has run for a while.
 
 use log::info;
-use sparko_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
-use sparko_embedded_std::platform::PlatformInitializer;
-use sparko_embedded_std::task::scheduler::ScheduledTask;
+use bruce_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
+use bruce_embedded_std::platform::PlatformInitializer;
+use bruce_embedded_std::task::scheduler::ScheduledTask;
 
 use crate::{Esp32Platform, Esp32PlatformInitializer, Feature, FeatureDescriptor};
 

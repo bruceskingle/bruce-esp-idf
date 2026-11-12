@@ -6,15 +6,15 @@ use embedded_graphics::prelude::Size;
 use embedded_graphics::primitives::Rectangle;
 use log::info;
 use rgb::RGB8;
-use sparko_embedded_std::Layout;
-use sparko_embedded_std::config::ConfigSpec;
-use sparko_embedded_std::config::ConfigSpecValue;
-use sparko_embedded_std::config::FeatureConfig;
-use sparko_embedded_std::config::TypedValue;
-use sparko_embedded_std::graphics::ClockRenderer;
-use sparko_embedded_std::graphics::DisplayManager;
-use sparko_embedded_std::platform::PlatformInitializer;
-use sparko_embedded_std::task::scheduler::ScheduledTask;
+use bruce_embedded_std::Layout;
+use bruce_embedded_std::config::ConfigSpec;
+use bruce_embedded_std::config::ConfigSpecValue;
+use bruce_embedded_std::config::FeatureConfig;
+use bruce_embedded_std::config::TypedValue;
+use bruce_embedded_std::graphics::ClockRenderer;
+use bruce_embedded_std::graphics::DisplayManager;
+use bruce_embedded_std::platform::PlatformInitializer;
+use bruce_embedded_std::task::scheduler::ScheduledTask;
 
 /// Optional, so that the clock still starts on a board where they have never been set.
 #[cfg(not(feature = "mono-display"))]

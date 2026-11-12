@@ -3,11 +3,11 @@ use esp_idf_hal::{
     gpio::{Output, PinDriver},
     spi::SpiDeviceDriver,
 };
-use sparko_embedded_std::graphics::{Color, DisplayManager};
+use bruce_embedded_std::graphics::{Color, DisplayManager};
 
 #[cfg(feature = "board-cyd-esp32-28")]
 use crate::display::mipi_dsi_display_manager;
-use sparko_embedded_std::graphics::{rgb565_from_rgb8, to_rgb565};
+use bruce_embedded_std::graphics::{rgb565_from_rgb8, to_rgb565};
 
 pub struct EspDi {
     pub spi: crate::DisplaySpi,

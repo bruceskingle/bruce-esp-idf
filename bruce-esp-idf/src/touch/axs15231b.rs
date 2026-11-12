@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use esp_idf_hal::delay::BLOCK;
 use esp_idf_hal::i2c::I2cDriver;
-use sparko_embedded_std::listener::{Listener, ListenerManager};
+use bruce_embedded_std::listener::{Listener, ListenerManager};
 
 use super::TouchPoint;
 

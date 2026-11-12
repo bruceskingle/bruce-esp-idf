@@ -9,7 +9,7 @@ mod message;
 use std::time::Duration;
 
 use log::error;
-use sparko_esp_idf::{
+use bruce_esp_idf::{
     Esp32Platform,
     features::analog_clock::AnalogClock,
 };
@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
             let sd_card = sparko.sd_card();
             Ok(Box::new(move || {
                 speaker.play_tone(880.0, Duration::from_millis(120))?;
-                let text = match (&sd_card, sparko_esp_idf::sd_card::space()) {
+                let text = match (&sd_card, bruce_esp_idf::sd_card::space()) {
                     (Ok(_), Some((total, free))) => format!("SD {:.1} GB, {:.1} GB free", total as f64 / 1e9, free as f64 / 1e9),
                     (Ok(_), None) => "SD card cannot be read".to_string(),
                     (Err(error), _) => format!("No SD card: {error}"),
@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
                 message::show(&display_manager, &text)
             }))
         })
-        .with_firmware(sparko_esp_idf::firmware!())
+        .with_firmware(bruce_esp_idf::firmware!())
         .build()?;
 
     // At once, while the board joins the network, so in a thread of its own, at the volume set on the /config page.

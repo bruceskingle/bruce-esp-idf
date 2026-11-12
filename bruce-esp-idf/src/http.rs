@@ -6,7 +6,7 @@ use esp_idf_svc::http::{
 };
 use indexmap::IndexMap;
 use log::info;
-use sparko_embedded_std::http_server::{HttpMethod, HttpServerManager};
+use bruce_embedded_std::http_server::{HttpMethod, HttpServerManager};
 use url::form_urlencoded;
 
 /*

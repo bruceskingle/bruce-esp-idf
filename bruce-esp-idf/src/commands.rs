@@ -2,7 +2,7 @@ use std::io::Write;
 
 use indexmap::IndexMap;
 use log::info;
-use sparko_embedded_std::{command::Commands, config_manager::ConfigManager};
+use bruce_embedded_std::{command::Commands, config_manager::ConfigManager};
 
 use crate::core::CORE_FEATURE_NAME;
 

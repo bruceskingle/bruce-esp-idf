@@ -21,7 +21,7 @@ use std::time::{Duration, Instant};
 use anyhow::{anyhow, bail};
 use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use log::{info, warn};
-use sparko_embedded_std::config_manager::ConfigManager;
+use bruce_embedded_std::config_manager::ConfigManager;
 
 use crate::identity::DEVICE_NAMESPACE;
 
@@ -233,7 +233,7 @@ enum Shown {
 /// Shows the pairing code on the whole screen while pairing, then for a few seconds that the device has been adopted or
 /// released, see DisplayManager::set_overlay.
 #[cfg(feature = "display")]
-pub struct AdoptionOverlay<DM: sparko_embedded_std::graphics::DisplayManager> {
+pub struct AdoptionOverlay<DM: bruce_embedded_std::graphics::DisplayManager> {
     display_manager: Arc<Mutex<DM>>,
     adoption: Arc<Adoption>,
     fingerprint: String,
@@ -242,7 +242,7 @@ pub struct AdoptionOverlay<DM: sparko_embedded_std::graphics::DisplayManager> {
 }
 
 #[cfg(feature = "display")]
-impl<DM: sparko_embedded_std::graphics::DisplayManager> AdoptionOverlay<DM> {
+impl<DM: bruce_embedded_std::graphics::DisplayManager> AdoptionOverlay<DM> {
     pub fn new(display_manager: &Arc<Mutex<DM>>, adoption: Arc<Adoption>, fingerprint: &str) -> Self {
         Self { display_manager: display_manager.clone(), adoption, fingerprint: fingerprint.to_string(), shown: None }
     }
@@ -254,7 +254,7 @@ impl<DM: sparko_embedded_std::graphics::DisplayManager> AdoptionOverlay<DM> {
         use embedded_graphics::prelude::*;
         use embedded_graphics::primitives::{PrimitiveStyle, Rectangle};
         use embedded_graphics::text::{Alignment, Text};
-        use sparko_embedded_std::graphics::{Color, DrawTargetResultExt};
+        use bruce_embedded_std::graphics::{Color, DrawTargetResultExt};
 
         /// How far below the centre the countdown's baseline is.
         const COUNTDOWN_Y: i32 = 70;
@@ -299,7 +299,7 @@ impl<DM: sparko_embedded_std::graphics::DisplayManager> AdoptionOverlay<DM> {
         use embedded_graphics::mono_font::{MonoTextStyle, ascii::FONT_10X20};
         use embedded_graphics::prelude::*;
         use embedded_graphics::text::{Alignment, Baseline, Text, TextStyleBuilder};
-        use sparko_embedded_std::graphics::{Color, DrawTargetResultExt};
+        use bruce_embedded_std::graphics::{Color, DrawTargetResultExt};
 
         let mut manager = self.display_manager.lock().unwrap();
         if !manager.overlay_active() {
@@ -316,7 +316,7 @@ impl<DM: sparko_embedded_std::graphics::DisplayManager> AdoptionOverlay<DM> {
 }
 
 #[cfg(feature = "display")]
-impl<DM: sparko_embedded_std::graphics::DisplayManager> sparko_embedded_std::task::scheduler::ScheduledTask<crate::Esp32Platform>
+impl<DM: bruce_embedded_std::graphics::DisplayManager> bruce_embedded_std::task::scheduler::ScheduledTask<crate::Esp32Platform>
     for AdoptionOverlay<DM>
 {
     fn run(&mut self, _sparko: &mut crate::Esp32Platform) -> anyhow::Result<()> {

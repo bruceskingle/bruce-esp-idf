@@ -25,7 +25,7 @@ use esp_idf_svc::nvs::{EspNvsPartition, NvsDefault};
 use esp_idf_svc::tls::X509;
 use log::info;
 use serde_json::{Value, json};
-use sparko_embedded_std::config_manager::ConfigManager;
+use bruce_embedded_std::config_manager::ConfigManager;
 
 use crate::Firmware;
 use crate::http::EspHttpServerManager;

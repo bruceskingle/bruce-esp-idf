@@ -12,12 +12,12 @@ use esp_idf_svc::{
 };
 use esp_idf_sys::*;
 use log::{error, info};
-use sparko_embedded_std::config::Config;
-use sparko_embedded_std::config_manager::{ConfigManager, ConfigManagerBuilder};
-use sparko_embedded_std::http_server::HttpServerManager;
-use sparko_embedded_std::platform::{Platform, PlatformInitializer};
-use sparko_embedded_std::{InitStatus, Status};
-use sparko_embedded_std::{
+use bruce_embedded_std::config::Config;
+use bruce_embedded_std::config_manager::{ConfigManager, ConfigManagerBuilder};
+use bruce_embedded_std::http_server::HttpServerManager;
+use bruce_embedded_std::platform::{Platform, PlatformInitializer};
+use bruce_embedded_std::{InitStatus, Status};
+use bruce_embedded_std::{
     problem::ProblemManager,
     task::scheduler::{ScheduledTask, TaskScheduler, TaskSchedulerBuilder},
 };
@@ -48,7 +48,7 @@ use esp_idf_hal::spi::{Dma, SpiDeviceDriver, SpiDriver, SpiDriverConfig};
 #[cfg(feature = "mipi-dsi-display")]
 use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
 #[cfg(feature = "display")]
-use sparko_embedded_std::{DisplayOrientation, graphics::DisplayManager};
+use bruce_embedded_std::{DisplayOrientation, graphics::DisplayManager};
 
 #[cfg(feature = "led")]
 use crate::led::LedManager;
@@ -960,7 +960,7 @@ impl Esp32PlatformBuilder {
             builder.internal_add_feature(Box::new(crate::features::screen::ScreenSettings), true)?;
             let on = match builder.features.last() {
                 Some(holder) => {
-                    use sparko_embedded_std::config::FeatureConfig;
+                    use bruce_embedded_std::config::FeatureConfig;
                     match crate::features::screen::ScreenConfig::from_config_spec(&holder.config.spec) {
                         Ok(config) => crate::features::screen::on(&config),
                         Err(error) => {
@@ -987,7 +987,7 @@ impl Esp32PlatformBuilder {
             // The volume from now, not only once the features start, so that a sound played as the board starts, e.g.
             // a startup chime, plays at it.
             if let Some(holder) = builder.features.last() {
-                use sparko_embedded_std::config::FeatureConfig;
+                use bruce_embedded_std::config::FeatureConfig;
                 match crate::features::speaker_settings::SpeakerConfig::from_config_spec(&holder.config.spec) {
                     Ok(config) => builder.speaker.set_volume(crate::features::speaker_settings::volume(&config)),
                     Err(error) => error!("Unable to read the speaker's volume: {error:#}"),

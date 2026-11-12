@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use sparko_embedded_std::{
+use bruce_embedded_std::{
     config::{ConfigSpec, FeatureConfig},
     feature::FeatureDescriptor,
 };
@@ -50,7 +50,7 @@ pub struct Firmware {
 
 /// The Firmware of the crate it is called in, its name and version, built for the board its `board-*` feature
 /// chooses, with the record of them a flasher reads before flashing, placed by the linker at the start of the image,
-/// e.g. `Esp32Platform::builder()...with_firmware(sparko_esp_idf::firmware!())`.
+/// e.g. `Esp32Platform::builder()...with_firmware(bruce_esp_idf::firmware!())`.
 #[macro_export]
 macro_rules! firmware {
     () => {{
@@ -134,10 +134,10 @@ mod wifi;
 #[cfg(feature = "touch-driver")]
 pub mod touch;
 
-/// The attitude and tilt, from sparko-embedded-std, and the IMU chips the boards have, which give it their readings.
+/// The attitude and tilt, from bruce-embedded-std, and the IMU chips the boards have, which give it their readings.
 #[cfg(any(feature = "tilt", feature = "ahrs"))]
 pub mod ahrs {
-    pub use sparko_embedded_std::ahrs::*;
+    pub use bruce_embedded_std::ahrs::*;
     pub mod qmi8658;
 }
 

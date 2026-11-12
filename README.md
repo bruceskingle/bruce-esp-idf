@@ -1,5 +1,5 @@
-# sparko-embedded-std
-Sparko Embedded Std is a platform for embedded applications for hardware such as ESP32 SoC boards. This platform includes the standard Rust library which means that the heap and standard collections like ```Vec``` are all available for use. The platform is split in two, by one rule: ```sparko-embedded-std``` holds the hardware agnostic code, and ```sparko-esp-idf``` the code specific to ESP32 boards, using the ```esp-idf-hal``` and ```esp-idf-svc``` crates, see [Architecture](#architecture). ESP32 boards are the only hardware supported for now, but the split keeps the way open for others, such as a Raspberry Pi running Linux, which would be a platform crate beside ```sparko-esp-idf```.
+# bruce-esp-idf
+Bruce's ESP-IDF Platform: a platform for embedded applications on ESP32 boards, built on the hardware agnostic [bruce-embedded-std](https://github.com/bruceskingle/bruce-embedded-std), with a demo for each board. It includes the standard Rust library, which means that the heap and standard collections like ```Vec``` are all available for use, and uses the ```esp-idf-hal``` and ```esp-idf-svc``` crates. The platform is split in two, by one rule: bruce-embedded-std holds the hardware agnostic code, and this repository the code specific to ESP32 boards, see [Architecture](#architecture).
 
 # The Core Platform
 The core platform provides a set of services to support the running of one or more *Features*, which provide the application functionality. Each feature can be enabled or disabled and may have a configuration. The *Core Feature* provides WiFi and an HTTP server. If the *Core Feature* does not have a valid configuration (including the SSID and password for your WiFi network), then it will start WiFi an *Access Point Mode*. This means that it will create a new WiFi network (with the SSID **ESP32-Setup** and the password **password**) with a captive portal so that if you connect to this network you will be taken automatically to the config page so the necessary configuration values can be entered. Once this is done and the board is rebooted it will start WiFi in client mode, connecting to the WiFi network you have configured as a normal device.
@@ -10,7 +10,7 @@ The HTTP server is still available (on the IP address allocated by your WiFi net
 This is the sample application for the ESP32 DevKitV1 board:
 
 ```rust
-use sparko_esp_idf::{
+use bruce_esp_idf::{
     Esp32Platform,
     features::{binary_clock::BinaryClock, dyndns2::DynDns2},
 };
@@ -18,7 +18,7 @@ use sparko_esp_idf::{
 fn main() -> anyhow::Result<()> {
     let (builder, remainder) = Esp32Platform::builder()?;
 
-    let smart_leds = sparko_esp_idf::smart_led::new(
+    let smart_leds = bruce_esp_idf::smart_led::new(
         remainder.spi3,
         remainder.gpio14, //SCLK
         remainder.gpio13, //SDO / MISO
@@ -43,7 +43,7 @@ There are other approaches based on bare metal (non std) architecture (e.g. usin
 In a search for an alternative approach I came across the YouTube ```Floodplain``` channel (https://www.youtube.com/watch?v=o8yNNVFzNnM&t=9s) and based on that approach, and using the ```esp-idf-svc``` crate I was able to get WiFi working successfully. Binaries build on the standard library and using ```esp-idf-svc``` are larger than bare metal binaries, but I have not had any trouble running them on any ESP32 based board including the DevKitV1, and while this is not a pure Rust implementation (the ```esp-idf-``` crates are a thin Rust wrapper for the C based ESP IDF SDK) those underlying C implementations (especially the WiFi) are production tested mature implementations which I have found to work well.
 
 # Architecture
-This repo contains a number of library crates under the ```libs``` directory and an example binary crate for each board under the ```boards``` directory:
+This repository has the library, ```bruce-esp-idf```, and an example binary crate for each board under ```boards```, each its own Cargo project, with its own target, as each board's chip needs its own:
 ```
 ├── boards
 │   ├── cyd-esp32-28
@@ -54,23 +54,17 @@ This repo contains a number of library crates under the ```libs``` directory and
 │   ├── wave-esp32c6-lcd-147
 │   ├── wave-esp32c6-touch-147
 │   └── wave-esp32s3-rlcd-42
-├── libs
-│   ├── bruce-embedded-firmware-record
-│   ├── feature-config-derive
-│   ├── sparko-embedded-std
-│   │   └── examples
-│   └── sparko-esp-idf
-└── tools
+└── bruce-esp-idf
 ```
-The platform is two crates, divided by one rule: code which would work the same on any hardware with the standard library goes in ```sparko-embedded-std```, and code which needs an ESP32, or ESP-IDF, goes in ```sparko-esp-idf```. ```sparko-esp-idf``` depends on ```sparko-embedded-std```, never the other way round. They are to become two repositories, ```bruce-embedded-std``` and ```bruce-esp-idf```.
+The platform is two crates, in two repositories, divided by one rule: code which would work the same on any hardware with the standard library goes in [bruce-embedded-std](https://github.com/bruceskingle/bruce-embedded-std), and code which needs an ESP32, or ESP-IDF, goes in ```bruce-esp-idf```, here. ```bruce-esp-idf``` depends on ```bruce-embedded-std```, never the other way round. Until they are published, the crates depend on one another by path, so bruce-embedded-std and [bruce-embedded-firmware-record](https://github.com/bruceskingle/bruce-embedded-firmware-record) are checked out next to this repository.
 
-## sparko-embedded-std
-The hardware agnostic platform: *Features* and their configuration, the config page, the task scheduler, time zones, graphics such as the clocks and the colours, the mDNS responder, the attitude and tilt worked out from an IMU's readings, and the traits a platform implements, e.g. ```Platform```, ```ConfigStore```, ```HttpServerManager``` and ```DisplayManager```. It has no ESP32 dependencies, so it builds, and its tests run, on a computer, with ```cargo test --all-features```. It would be shared by a platform for other hardware, e.g. a Raspberry Pi running Linux.
+## bruce-embedded-std
+The hardware agnostic platform: *Features* and their configuration, the config page, the task scheduler, time zones, graphics such as the clocks and the colours, the mDNS responder, the attitude and tilt worked out from an IMU's readings, and the traits a platform implements, e.g. ```Platform```, ```ConfigStore```, ```HttpServerManager``` and ```DisplayManager```. It has no ESP32 dependencies, so it builds, and its tests run, on a computer. It would be shared by a platform for other hardware, e.g. a Raspberry Pi running Linux.
 
-## sparko-esp-idf
-The ESP32 platform: everything which needs ESP-IDF, e.g. Wi-Fi, the HTTP server, NVS, the SD card, and the drivers for each board's hardware, implementing ```sparko-embedded-std```'s traits, with ```Esp32Platform``` and the *Features* which use it. Support for each board, and its hardware, is enabled with ```Cargo``` features.
+## bruce-esp-idf
+The ESP32 platform: everything which needs ESP-IDF, e.g. Wi-Fi, the HTTP server, NVS, the SD card, and the drivers for each board's hardware, implementing ```bruce-embedded-std```'s traits, with ```Esp32Platform``` and the *Features* which use it. Support for each board, and its hardware, is enabled with ```Cargo``` features.
 
-The device drivers in ```sparko-esp-idf``` which use only one or two ESP-IDF types, e.g. ```shtc3.rs```'s ```I2cDriver```, are to become ```no_std``` crates of their own on the ```embedded-hal``` traits, usable on any hardware, rather than move into ```sparko-embedded-std```.
+The device drivers here which use only one or two ESP-IDF types, e.g. ```shtc3.rs```'s ```I2cDriver```, are to become ```no_std``` crates of their own on the ```embedded-hal``` traits, usable on any hardware, rather than move into ```bruce-embedded-std```.
 
 # Design Patterns
 The platform makes use of the builder pattern as a way of trying to get the best trade off between the cost and benefits of the standard library. Most of the platform types have a builder containing collections which allow items to be added, but the ```build()``` method will usually call ```.shrink_to_fit()``` on those collections which are then treated as immutable from that point onwards.
@@ -94,11 +88,6 @@ The conventions for builders are that they
     builder.build();
 ```
 - have methods which either return their result directly (if there are no failure scenarios) or return an ```anyhow::Result<>``` of their result.
-
-The following implementations are available which use this crate:
-- [sparko-esp-idf](https://github.com/bruceskingle/sparko-esp-idf) for ESP32 SoC based boards.
-
-Example applications for various boards are available at [sparko-embedded-examples](https://github.com/bruceskingle/sparko-embedded-example) on GitHub.
 
 # Features
 This crate uses multiple features to support various different ESP32 boards. There are functional features like ```mono-led``` and ```rgb-led``` which are referenced in the code and which get activated by board level features like ```board-cyd-esp32-28``` and ```board-seeed-esp32c6-xiao```. Client crates should normally select exactly one board feature, and any of the optional hardware features (see below) which their board has and which they want to use.
@@ -150,17 +139,19 @@ The config page, and ```/api/info``` where the API is enabled, say which board t
 
 
 # Development
-In order to avoid compiler errors during development one of the board features should be enabled in VSCode settings (file ```.vscode/settings.json``` in the workspace root) and when building on the command line release mode and one board feature should be selected e.g. ```cargo build --release --features board-cyd-esp32-28```
+The library compiles only for a board, so it is built through a board's crate, in ```boards```, e.g. ```cargo build --release``` in ```boards/seeed-esp32c6-xiao```, whose ```.cargo/config.toml``` has its target, ```MCU``` and ESP-IDF version.
+
+```bruce-esp-idf.code-workspace``` is a VS Code workspace for working on the platform: it opens this repository, the libraries next to it, and each board as a folder of its own, and has a task and a launch configuration for building a board's firmware and flashing it with the flasher's window. rust-analyzer can check only one board's code at a time, as the code behind each board's features differs, so ```rust-analyzer.linkedProjects``` names the board to check, with the commented out lines for the others to switch to. It also lists repositories which are the author's own setup, e.g. Bruce's Smart Home: to look at this repository alone, comment out the folders which are not checked out next to it.
 
 # Building and Flashing
-Firmware built for the wrong board drives the wrong pins, and can damage it, so each firmware image carries a record of the board it was built for, the firmware and its version, which a board crate adds with ```.with_firmware(sparko_esp_idf::firmware!())```. It starts with the magic ```bruce-embedded-std firmware 1```, and the firmware logs it as it starts, with the device's ID, its Wi-Fi MAC.
+Firmware built for the wrong board drives the wrong pins, and can damage it, so each firmware image carries a record of the board it was built for, the firmware and its version, which a board crate adds with ```.with_firmware(bruce_esp_idf::firmware!())```. It starts with the magic ```bruce-embedded-std firmware 1```, and the firmware logs it as it starts, with the device's ID, its Wi-Fi MAC.
 
-Flash with ```bruce-embedded-flash``` (```tools/bruce-embedded-flash```, install it with ```cargo install --path tools/bruce-embedded-flash```), never with espflash directly. Before it flashes, it reads the record from the new firmware and, over USB, from the firmware on the board, and flashes only if they are for the same board. If the board's firmware has no record, e.g. a new board, it asks which board it is, offering to restart it so that you can see which, and if it is for another board, or would replace other firmware, it refuses unless told otherwise. ```bruce-embedded-flash list``` lists the boards on USB without touching them, with what each was when last identified. The same checks are in a window, ```cargo run --features desktop``` in ```tools/bruce-embedded-flash-ui```, whose Dioxus component apps use to flash boards too, e.g. Marco Sparko's Devices page.
+Flash with ```bruce-embedded-flash``` (from [bruce-embedded-flash](https://github.com/bruceskingle/bruce-embedded-flash), install it with ```cargo install --path bruce-embedded-flash``` in its checkout), never with espflash directly. Before it flashes, it reads the record from the new firmware and, over USB, from the firmware on the board, and flashes only if they are for the same board. If the board's firmware has no record, e.g. a new board, it asks which board it is, offering to restart it so that you can see which, and if it is for another board, or would replace other firmware, it refuses unless told otherwise. ```bruce-embedded-flash list``` lists the boards on USB without touching them, with what each was when last identified. The same checks are in a window, ```cargo run --features desktop``` in its ```bruce-embedded-flash-ui```, whose Dioxus component apps use to flash boards too, e.g. Marco Sparko's Devices page.
 
-Firmware is kept in a folder shared by every app which flashes these boards, ```~/Library/Application Support/bruce-embedded-std/firmware/``` on macOS, by the GitHub repository it comes from and its version, e.g. ```bruce-embedded-std/0.1.0/``` (```tools/bruce-embedded-firmware```). What is built here goes in ```bruce-embedded-std/dev/```:
+Firmware is kept in a folder shared by every app which flashes these boards, ```~/Library/Application Support/bruce-embedded-std/firmware/``` on macOS, by the GitHub repository it comes from and its version, e.g. ```bruce-esp-idf/0.1.0/``` (bruce-embedded-flash's ```bruce-embedded-firmware```). What is built here goes in ```bruce-esp-idf/dev/```:
 
-- ```cargo run --release``` in a board's directory builds its demo and flashes it, and its cargo runner, ```bruce-embedded-flash flash --monitor --keep-as bruce-embedded-std```, then copies it into ```bruce-embedded-std/dev/```, so the folder holds what was last flashed. A plain ```cargo build``` only builds into the board's ```target/```.
-- ```./build.sh``` builds every board's demo, or those named, e.g. ```./build.sh seeed-esp32c6-xiao```, and copies each into ```bruce-embedded-std/dev/```.
+- ```cargo run --release``` in a board's directory builds its demo and flashes it, and its cargo runner, ```bruce-embedded-flash flash --monitor --keep-as bruce-esp-idf```, then copies it into ```bruce-esp-idf/dev/```, so the folder holds what was last flashed. A plain ```cargo build``` only builds into the board's ```target/```.
+- ```./build.sh``` builds every board's demo, or those named, e.g. ```./build.sh seeed-esp32c6-xiao```, and copies each into ```bruce-esp-idf/dev/```.
 
 Releases attach each board's firmware as an ELF file, and a repository with firmware has the GitHub topic ```bruce-embedded-firmware``` and a ```bruce-embedded-std.md``` in its root, whose first line, a heading, says what its firmware is, and the rest more about it. ```bruce-embedded-flash firmware find```, ```releases``` and ```download```, or Get Firmware in the window, find these repositories and download their releases into the shared folder.
 

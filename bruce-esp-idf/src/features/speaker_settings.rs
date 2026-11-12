@@ -6,7 +6,7 @@ use std::time::Duration;
 use esp_idf_svc::http::Method;
 use esp_idf_svc::io::Read;
 use log::warn;
-use sparko_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
+use bruce_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
 
 use crate::http::EspHttpServerManager;
 use crate::speaker::Speaker;

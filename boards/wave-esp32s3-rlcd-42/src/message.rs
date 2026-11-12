@@ -11,8 +11,8 @@ use embedded_graphics::{
     prelude::*,
     text::{Alignment, Text},
 };
-use sparko_embedded_std::graphics::{Color, DisplayManager, wrap};
-use sparko_esp_idf::BoardDisplayManager;
+use bruce_embedded_std::graphics::{Color, DisplayManager, wrap};
+use bruce_esp_idf::BoardDisplayManager;
 
 /// How long the message is shown.
 const SHOWN_FOR: Duration = Duration::from_secs(1);

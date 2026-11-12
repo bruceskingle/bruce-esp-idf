@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Builds every board's demo, or those named, e.g. ./build.sh seeed-esp32c6-xiao, and copies each to the shared firmware
 # folder as bruce-esp-idf's dev version, see bruce-embedded-firmware in bruce-embedded-flash, where its window
-# and apps which flash boards, e.g. Marco Sparko, find it.
+# and apps which flash boards, e.g. Bruce's Smart Home, find it.
 set -e          # exit on error
 set -u          # exit on undefined variable
 set -o pipefail # exit if any command in a pipe fails

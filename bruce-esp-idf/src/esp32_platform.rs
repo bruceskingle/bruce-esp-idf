@@ -1056,9 +1056,9 @@ impl Esp32PlatformBuilder {
         mut self,
         on_start: impl FnOnce(&mut Esp32Platform) -> anyhow::Result<crate::push_button::Action> + 'static,
     ) -> Self {
-        self.on_running.push(Box::new(move |sparko| {
-            let action = on_start(sparko)?;
-            sparko.key_button().set_action(action);
+        self.on_running.push(Box::new(move |platform| {
+            let action = on_start(platform)?;
+            platform.key_button().set_action(action);
             Ok(())
         }));
         self
@@ -1071,9 +1071,9 @@ impl Esp32PlatformBuilder {
         mut self,
         on_start: impl FnOnce(&mut Esp32Platform) -> anyhow::Result<crate::push_button::Action> + 'static,
     ) -> Self {
-        self.on_running.push(Box::new(move |sparko| {
-            let action = on_start(sparko)?;
-            sparko.boot_button().set_action(action);
+        self.on_running.push(Box::new(move |platform| {
+            let action = on_start(platform)?;
+            platform.boot_button().set_action(action);
             Ok(())
         }));
         self
@@ -1446,7 +1446,7 @@ impl Esp32PlatformBuilder {
         crate::display::axs15231b::spawn_flusher(&display_manager)?;
 
         Ok(Esp32PlatformRunner {
-            sparko_std: Esp32Platform {
+            platform: Esp32Platform {
                 #[cfg(feature = "key-button")]
                 key_button: self.key_button,
                 #[cfg(feature = "boot-button")]
@@ -1499,14 +1499,14 @@ struct FeatureHolder {
 }
 
 pub struct Esp32PlatformRunner {
-    pub sparko_std: Esp32Platform,
+    pub platform: Esp32Platform,
     initializer: Esp32PlatformInitializer,
     core_feature_holder: FeatureHolder,
 }
 
 impl Esp32PlatformRunner {
     pub fn start(mut self) -> anyhow::Result<()> {
-        self.sparko_std.start(self.initializer, self.core_feature_holder)
+        self.platform.start(self.initializer, self.core_feature_holder)
     }
 }
 
@@ -1831,7 +1831,7 @@ impl Esp32Platform {
         initializer: Esp32PlatformInitializer,
         core_feature_holder: FeatureHolder,
     ) -> anyhow::Result<()> {
-        log::info!("sparko_cyd: top of run");
+        log::info!("platform: top of run");
         // Why the device is being set up, if it was, as the details of the setup status.
         let mut why = Vec::new();
         if self.core_config_valid {

@@ -46,12 +46,12 @@ impl Feature for ImuFeature {
 
     fn start(
         &mut self,
-        sparko: &mut bruce_esp_idf::Esp32Platform,
+        platform: &mut bruce_esp_idf::Esp32Platform,
         initializer: &mut bruce_esp_idf::Esp32PlatformInitializer,
         _config: ImuConfig,
     ) -> anyhow::Result<()> {
         info!("ImuFeature::start");
-        sparko.imu_manager.start(Duration::from_millis(50))?;
+        platform.imu_manager.start(Duration::from_millis(50))?;
 
         info!("ImuFeature::start...add task");
         initializer.add_task(Box::new(ImuTask {}), "* * * * * *")?;
@@ -64,7 +64,7 @@ impl Feature for ImuFeature {
 struct ImuTask {}
 
 impl ScheduledTask<Esp32Platform> for ImuTask {
-    // fn run(&mut self, _sparko_cyd: &dyn Esp32Platform) -> anyhow::Result<()> {
+    // fn run(&mut self, _platform: &dyn Esp32Platform) -> anyhow::Result<()> {
     //     let clock_renderer =
     // }
 
@@ -72,9 +72,9 @@ impl ScheduledTask<Esp32Platform> for ImuTask {
         "IMU Logger"
     }
 
-    fn run(&mut self, sparko_embedded: &mut Esp32Platform) -> anyhow::Result<()> {
-        let attitude = sparko_embedded.imu_manager.read_attitude();
-        let tilt = sparko_embedded.imu_manager.read_tilt();
+    fn run(&mut self, platform: &mut Esp32Platform) -> anyhow::Result<()> {
+        let attitude = platform.imu_manager.read_attitude();
+        let tilt = platform.imu_manager.read_tilt();
 
         info!("IMU Logger Attitude={:?} Tilt={:?}", attitude, tilt);
         Ok(())
@@ -128,14 +128,14 @@ impl Feature for TouchDrawFeature {
 
     fn start(
         &mut self,
-        sparko: &mut bruce_esp_idf::Esp32Platform,
+        platform: &mut bruce_esp_idf::Esp32Platform,
         _initializer: &mut bruce_esp_idf::Esp32PlatformInitializer,
         _config: TouchDrawConfig,
     ) -> anyhow::Result<()> {
         let listener: Arc<dyn Listener<TouchPoint>> = Arc::new(TouchListener {
-            display_manager: sparko.display_manager.clone(),
+            display_manager: platform.display_manager.clone(),
         });
-        sparko.touch_driver.add_listener(&listener);
+        platform.touch_driver.add_listener(&listener);
 
         self.listener = Some(listener);
         Ok(())
@@ -147,7 +147,7 @@ fn main() -> anyhow::Result<()> {
 
     let smart_leds = bruce_esp_idf::smart_led::new(remainder.rmt.channel0, remainder.gpio6, 64)?;
 
-    let sparko_esp32 = builder
+    let runner = builder
         .with_feature(Box::new(TouchDrawFeature::new()))?
         .with_feature(Box::new(ImuFeature::new()))?
         .with_feature(Box::new(DynDns2::new()?))?
@@ -174,5 +174,5 @@ fn main() -> anyhow::Result<()> {
         .with_firmware(bruce_esp_idf::firmware!())
         .build()?;
 
-    sparko_esp32.start()
+    runner.start()
 }

@@ -120,7 +120,7 @@ fn generate(id: &str) -> anyhow::Result<(String, String)> {
                 ),
                 "mbedtls_ecp_gen_key",
             )?;
-            let name = CString::new(format!("CN=sparko-{id}"))?;
+            let name = CString::new(format!("CN=bruce-{id}"))?;
             mbedtls_x509write_crt_set_version(&mut cert, MBEDTLS_X509_CRT_VERSION_3 as i32);
             mbedtls_x509write_crt_set_md_alg(&mut cert, mbedtls_md_type_t_MBEDTLS_MD_SHA256);
             mbedtls_x509write_crt_set_subject_key(&mut cert, &mut key);

@@ -34,13 +34,13 @@ impl Feature for TestPattern {
 
     fn start(
         &mut self,
-        sparko: &mut Esp32Platform,
+        platform: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
         _config: TestPatternConfig,
     ) -> anyhow::Result<()> {
         initializer.add_task(
             Box::new(DrawTask {
-                display_manager: sparko.display_manager.clone(),
+                display_manager: platform.display_manager.clone(),
                 drawn: None,
             }),
             "* * * * * *",
@@ -61,7 +61,7 @@ impl ScheduledTask<Esp32Platform> for DrawTask {
         "Test Pattern"
     }
 
-    fn run(&mut self, _sparko: &mut Esp32Platform) -> anyhow::Result<()> {
+    fn run(&mut self, _platform: &mut Esp32Platform) -> anyhow::Result<()> {
         let mut display_manager = self.display_manager.lock().unwrap();
         if display_manager.overlay_active() || self.drawn == Some(display_manager.generation()) {
             return Ok(());

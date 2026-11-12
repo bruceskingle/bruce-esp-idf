@@ -103,33 +103,33 @@ A board's buttons are owned by the platform with features such as ```key-button`
 The application gives a button its action with the builder. The closure is called with the platform once it is running, before the *Features* start, so that it can take what the action needs, such as the display manager:
 ```rust
 let platform = builder
-    .with_key_button(|sparko| {
-        let display_manager = sparko.display_manager.clone();
+    .with_key_button(|platform| {
+        let display_manager = platform.display_manager.clone();
         Ok(Box::new(move || message::show(&display_manager, "KEY pressed")))
     })
     .build()?;
 ```
 A *Feature* can take a button over when it starts, replacing the application's action, as it is given the platform:
 ```rust
-fn start(&mut self, sparko: &mut Esp32Platform, initializer: &mut Esp32PlatformInitializer, config: Self::Config) -> anyhow::Result<()> {
-    let display_manager = sparko.display_manager.clone();
-    sparko.key_button().set_action(Box::new(move || next_page(&display_manager)));
+fn start(&mut self, platform: &mut Esp32Platform, initializer: &mut Esp32PlatformInitializer, config: Self::Config) -> anyhow::Result<()> {
+    let display_manager = platform.display_manager.clone();
+    platform.key_button().set_action(Box::new(move || next_page(&display_manager)));
     Ok(())
 }
 ```
 ```clear_action()``` makes a button do nothing again. A button wired to a pin of the ```Remainder``` works in the same way, with ```PushButton::new("Name", remainder.gpio4)?``` and then ```set_action()```. Buttons are taken to connect their pin to ground when pressed, using the chip's own pull-up, as board buttons usually do.
 
 ## SD Cards
-With the ```sd-card``` feature the platform mounts the board's SD card at start-up, with FAT, at ```/sd```, so that it can be used with ```std::fs```. ```sparko.sd_card()``` gives the mount point, or why there is no card, and ```sd_card::space()``` its size and free space. The card is only looked for at start-up, so a card put in later is found when the board next restarts.
+With the ```sd-card``` feature the platform mounts the board's SD card at start-up, with FAT, at ```/sd```, so that it can be used with ```std::fs```. ```platform.sd_card()``` gives the mount point, or why there is no card, and ```sd_card::space()``` its size and free space. The card is only looked for at start-up, so a card put in later is found when the board next restarts.
 
 ## Displays
-On a board with a display, ```sparko.display_manager``` is the board's ```DisplayManager```, which *Features* draw with, using ```embedded-graphics```. On a black and white display (the ```mono-display``` feature) colours are drawn as ink or paper by their brightness, so that a design for a colour display, light on dark, comes out dark on light, and *Features* offer no colour settings.
+On a board with a display, ```platform.display_manager``` is the board's ```DisplayManager```, which *Features* draw with, using ```embedded-graphics```. On a black and white display (the ```mono-display``` feature) colours are drawn as ink or paper by their brightness, so that a design for a colour display, light on dark, comes out dark on light, and *Features* offer no colour settings.
 
 ## Temperature and Humidity
-On a board with a temperature and humidity sensor, such as the SHTC3, ```sparko.shtc3().read()``` gives a reading. The platform adds a *Feature* of its own, **Temperature and Humidity**, which logs a reading every minute and has a **Temperature Offset** setting, in tenths of a degree. A sensor on the board is warmed by it, so it reads high: set the offset by comparing with a thermometer which can be trusted, after the board has been running for a while. The humidity is corrected with it.
+On a board with a temperature and humidity sensor, such as the SHTC3, ```platform.shtc3().read()``` gives a reading. The platform adds a *Feature* of its own, **Temperature and Humidity**, which logs a reading every minute and has a **Temperature Offset** setting, in tenths of a degree. A sensor on the board is warmed by it, so it reads high: set the offset by comparing with a thermometer which can be trusted, after the board has been running for a while. The humidity is corrected with it.
 
 ## Speaker
-On a board with a speaker, ```sparko.speaker()``` plays sounds: ```play_tone(880.0, Duration::from_millis(120))``` for a beep, or ```play_wav(bytes)``` for a WAV file of 16-bit PCM, of any sample rate, mono or stereo, which is mixed to mono and resampled to the speaker's 16 kHz. A sound can be built into the firmware with ```include_bytes!("../sounds/chime.wav")```, or read from the SD card. Each play waits until the sound has finished, so play from a thread of its own to carry on meanwhile. The platform adds a *Feature* of its own, **Speaker**, whose **Volume (%)** setting, a slider which plays a tone at each volume it is moved to, is what every sound plays at, from as soon as the board starts; 100% is the codec's full level, and each percent less is half a dB quieter.
+On a board with a speaker, ```platform.speaker()``` plays sounds: ```play_tone(880.0, Duration::from_millis(120))``` for a beep, or ```play_wav(bytes)``` for a WAV file of 16-bit PCM, of any sample rate, mono or stereo, which is mixed to mono and resampled to the speaker's 16 kHz. A sound can be built into the firmware with ```include_bytes!("../sounds/chime.wav")```, or read from the SD card. Each play waits until the sound has finished, so play from a thread of its own to carry on meanwhile. The platform adds a *Feature* of its own, **Speaker**, whose **Volume (%)** setting, a slider which plays a tone at each volume it is moved to, is what every sound plays at, from as soon as the board starts; 100% is the codec's full level, and each percent less is half a dB quieter.
 
 ## Sliders
 A number setting can be shown on the config page as a slider, with ```#[config(min = 0, max = 100)]``` on an ```i32``` or ```i64``` field of a *Feature*'s config. ```default = N``` is where the slider is while the setting has not been saved, and ```preview = "/path"``` a path on the device which the page POSTs each position to, as ```value=N```, while the slider is moved, so that its effect can be tried before it is saved, as the speaker's volume is. A position is sent only once the last has been answered, so that a fast drag does not queue up requests.
@@ -146,7 +146,7 @@ The library compiles only for a board, so it is built through a board's crate, i
 # Building and Flashing
 Firmware built for the wrong board drives the wrong pins, and can damage it, so each firmware image carries a record of the board it was built for, the firmware and its version, which a board crate adds with ```.with_firmware(bruce_esp_idf::firmware!())```. It starts with the magic ```bruce-embedded-std firmware 1```, and the firmware logs it as it starts, with the device's ID, its Wi-Fi MAC.
 
-Flash with ```bruce-embedded-flash``` (from [bruce-embedded-flash](https://github.com/bruceskingle/bruce-embedded-flash), install it with ```cargo install --path bruce-embedded-flash``` in its checkout), never with espflash directly. Before it flashes, it reads the record from the new firmware and, over USB, from the firmware on the board, and flashes only if they are for the same board. If the board's firmware has no record, e.g. a new board, it asks which board it is, offering to restart it so that you can see which, and if it is for another board, or would replace other firmware, it refuses unless told otherwise. ```bruce-embedded-flash list``` lists the boards on USB without touching them, with what each was when last identified. The same checks are in a window, ```cargo run --features desktop``` in its ```bruce-embedded-flash-ui```, whose Dioxus component apps use to flash boards too, e.g. Marco Sparko's Devices page.
+Flash with ```bruce-embedded-flash``` (from [bruce-embedded-flash](https://github.com/bruceskingle/bruce-embedded-flash), install it with ```cargo install --path bruce-embedded-flash``` in its checkout), never with espflash directly. Before it flashes, it reads the record from the new firmware and, over USB, from the firmware on the board, and flashes only if they are for the same board. If the board's firmware has no record, e.g. a new board, it asks which board it is, offering to restart it so that you can see which, and if it is for another board, or would replace other firmware, it refuses unless told otherwise. ```bruce-embedded-flash list``` lists the boards on USB without touching them, with what each was when last identified. The same checks are in a window, ```cargo run --features desktop``` in its ```bruce-embedded-flash-ui```, whose Dioxus component apps use to flash boards too, e.g. Bruce's Smart Home's Devices page.
 
 Firmware is kept in a folder shared by every app which flashes these boards, ```~/Library/Application Support/bruce-embedded-std/firmware/``` on macOS, by the GitHub repository it comes from and its version, e.g. ```bruce-esp-idf/0.1.0/``` (bruce-embedded-flash's ```bruce-embedded-firmware```). What is built here goes in ```bruce-esp-idf/dev/```:
 
@@ -183,7 +183,7 @@ This is the [Waveshare ESP32-S3-RLCD-4.2](https://www.waveshare.com/product/esp3
 - an SHTC3 temperature and humidity sensor, which the platform always drives
 - an ES8311 audio codec and amplifier, with a connector for the speaker which comes with it, which the platform always drives
 - a PCF85063 real time clock, and two microphones, which the platform does not drive yet
-- a 2 x 8 pin, 2.54 mm header, with 3V3, VBUS, two grounds, and GPIO 0, 1, 2, 3, 17, 18, 19, 20, 43, 44, 13 and 14. GPIO 1, 2, 3 and 17 are free, in the ```Remainder```. 13 and 14 are the board's I2C bus, which more devices can join, using ```sparko.i2c()```. 0 and 18 are the buttons, 19 and 20 the USB port, and 43 and 44 the console's UART, which the platform keeps
+- a 2 x 8 pin, 2.54 mm header, with 3V3, VBUS, two grounds, and GPIO 0, 1, 2, 3, 17, 18, 19, 20, 43, 44, 13 and 14. GPIO 1, 2, 3 and 17 are free, in the ```Remainder```. 13 and 14 are the board's I2C bus, which more devices can join, using ```platform.i2c()```. 0 and 18 are the buttons, 19 and 20 the USB port, and 43 and 44 the console's UART, which the platform keeps
 - a holder for an 18650 lithium battery, with charging, and a PWR button which switches the battery's power. The battery is not supplied: an unprotected 18650, flat or button top, about 65 mm long, fits.
 
 There is no reset button: unplug it, use the config page's **Restart** command, or reset it over USB. The example application, in ```boards/wave-esp32s3-rlcd-42```, plays ```sounds/Startup.wav``` as it starts, and shows an analog clock, the SD card's size and free space when KEY is pressed, and the temperature and humidity when BOOT is pressed, each with a beep.

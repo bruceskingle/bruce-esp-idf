@@ -1,4 +1,4 @@
-//! The device's API, for an app, e.g. Marco Sparko, to find out what the device is and manage it, over HTTPS with the
+//! The device's API, for an app, e.g. Bruce's Smart Home, to find out what the device is and manage it, over HTTPS with the
 //! device's own certificate, see identity.rs, which the app pins. It runs alongside the HTTP server of the /config page
 //! and captive portal, on port 443, once the device is on the Wi-Fi.
 //!

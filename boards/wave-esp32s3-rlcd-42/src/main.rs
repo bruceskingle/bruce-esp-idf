@@ -17,15 +17,15 @@ static STARTUP_SOUND: &[u8] = include_bytes!("../sounds/Startup.wav");
 fn main() -> anyhow::Result<()> {
     let (builder, _remainder) = Esp32Platform::builder()?;
 
-    let platform = builder
+    let runner = builder
         .with_feature(Box::new(AnalogClock::builder().build()?))?
         .with_feature(Box::new(edge_test::EdgeTest))?
         // The platform owns the buttons, see the key-button and boot-button features, and this says what a press does.
         // KEY shows the SD card's size and free space, or why there is no card.
-        .with_key_button(|sparko| {
-            let display_manager = sparko.display_manager.clone();
-            let speaker = sparko.speaker();
-            let sd_card = sparko.sd_card();
+        .with_key_button(|platform| {
+            let display_manager = platform.display_manager.clone();
+            let speaker = platform.speaker();
+            let sd_card = platform.sd_card();
             Ok(Box::new(move || {
                 speaker.play_tone(880.0, Duration::from_millis(120))?;
                 let text = match (&sd_card, bruce_esp_idf::sd_card::space()) {
@@ -39,10 +39,10 @@ fn main() -> anyhow::Result<()> {
             }))
         })
         // BOOT shows the temperature and humidity.
-        .with_boot_button(|sparko| {
-            let display_manager = sparko.display_manager.clone();
-            let speaker = sparko.speaker();
-            let sensor = sparko.shtc3();
+        .with_boot_button(|platform| {
+            let display_manager = platform.display_manager.clone();
+            let speaker = platform.speaker();
+            let sensor = platform.shtc3();
             Ok(Box::new(move || {
                 speaker.play_tone(660.0, Duration::from_millis(100))?;
                 speaker.play_tone(990.0, Duration::from_millis(150))?;
@@ -57,12 +57,12 @@ fn main() -> anyhow::Result<()> {
         .build()?;
 
     // At once, while the board joins the network, so in a thread of its own, at the volume set on the /config page.
-    let speaker = platform.sparko_std.speaker();
+    let speaker = runner.platform.speaker();
     std::thread::Builder::new().stack_size(8192).spawn(move || {
         if let Err(error) = speaker.play_wav(STARTUP_SOUND) {
             error!("Unable to play the startup sound: {error:#}");
         }
     })?;
 
-    platform.start()
+    runner.start()
 }

@@ -192,7 +192,7 @@ impl<T: SmartLeds + 'static> Feature for BinaryClock<T> {
 
     fn start(
         &mut self,
-        _sparko: &mut Esp32Platform,
+        _platform: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
         _config: BinaryClockConfig,
     ) -> anyhow::Result<()> {
@@ -256,7 +256,7 @@ impl<T: SmartLeds> ScheduledTask<Esp32Platform> for ClockTask<T> {
         "Binary Clock"
     }
 
-    fn run(&mut self, _sparko_embedded: &mut Esp32Platform) -> anyhow::Result<()> {
+    fn run(&mut self, _platform: &mut Esp32Platform) -> anyhow::Result<()> {
         let now = Local::now();
 
         info!("Current time: {}", now.format("%Y-%m-%d %H:%M:%S"));

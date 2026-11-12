@@ -29,7 +29,7 @@ impl Feature for ScreenSettings {
 
     fn start(
         &mut self,
-        _sparko: &mut Esp32Platform,
+        _platform: &mut Esp32Platform,
         _initializer: &mut Esp32PlatformInitializer,
         _config: ScreenConfig,
     ) -> anyhow::Result<()> {

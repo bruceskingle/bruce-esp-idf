@@ -125,12 +125,12 @@ takes effect after a restart), `GET /api/memory` (heap by kind, task stack high-
 `CONFIG_FREERTOS_USE_TRACE_FACILITY`), `GET /api/starts` (each start's time and reset reason, the latest 30 logged in NVS, the device's own, before the
 features start, and counted in NVS from the first moment, `starts.rs`), `POST /api/restart`. `/api/info` includes
 `upTimeSeconds` and `resetReason`.
-Features add their own with `sparko.api_server`'s `on`, or for reading, `sparko.api_get`, which also serves them over
+Features add their own with `platform.api_server`'s `on`, or for reading, `platform.api_get`, which also serves them over
 plain HTTP on port 80, as does `/api/info`. Board crates name their firmware with `with_firmware`.
 
 Adoption (`adoption.rs`): a pairing code on the screen, then the app's key in NVS; after that every request but
 `/api/info` needs `Authorization: Bearer <key>` over HTTPS, or, for `api_get` reads over HTTP,
-`Sparko-HMAC-SHA256 <unix time>:<hex HMAC-SHA256 of "<method> <uri> <time>" with the key's 32 bytes>` within 60 s
+`Bruce-HMAC-SHA256 <unix time>:<hex HMAC-SHA256 of "<method> <uri> <time>" with the key's 32 bytes>` within 60 s
 of the device's clock, 5 min, as the HTTP server serves one request at a time (`Adoption::is_signed`), so the key never crosses the network in clear. HTTPS connections cost
 tens of KB of heap each on the CYD (no PSRAM), which is why reads use HTTP; changes and adoption stay on HTTPS.
 

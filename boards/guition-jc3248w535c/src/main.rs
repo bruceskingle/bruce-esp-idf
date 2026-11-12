@@ -35,12 +35,12 @@ impl Listener<TouchPoint> for TouchDots {
 fn main() -> anyhow::Result<()> {
     let (builder, _remainder) = Esp32Platform::builder()?;
 
-    let platform = builder
+    let runner = builder
         .with_feature(Box::new(AnalogClock::builder().build()?))?
         .with_feature(Box::new(test_pattern::TestPattern))?
-        .with_boot_button(|sparko| {
-            let display_manager = sparko.display_manager.clone();
-            let sd_card = sparko.sd_card();
+        .with_boot_button(|platform| {
+            let display_manager = platform.display_manager.clone();
+            let sd_card = platform.sd_card();
             Ok(Box::new(move || {
                 let text = match (&sd_card, bruce_esp_idf::sd_card::space()) {
                     (Ok(_), Some((total, free))) => {
@@ -60,8 +60,8 @@ fn main() -> anyhow::Result<()> {
 
     // The touch driver keeps only a weak reference to its listeners, so this one is kept for as long as main runs.
     let dots: Arc<dyn Listener<TouchPoint>> = Arc::new(TouchDots {
-        display_manager: platform.sparko_std.display_manager.clone(),
+        display_manager: runner.platform.display_manager.clone(),
     });
-    platform.sparko_std.touch_driver.add_listener(&dots);
-    platform.start()
+    runner.platform.touch_driver.add_listener(&dots);
+    runner.start()
 }

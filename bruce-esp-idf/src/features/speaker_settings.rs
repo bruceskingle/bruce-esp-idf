@@ -41,11 +41,11 @@ impl Feature for SpeakerSettings {
 
     fn start(
         &mut self,
-        sparko: &mut Esp32Platform,
+        platform: &mut Esp32Platform,
         _initializer: &mut Esp32PlatformInitializer,
         config: SpeakerConfig,
     ) -> anyhow::Result<()> {
-        sparko.speaker().set_volume(volume(&config));
+        platform.speaker().set_volume(volume(&config));
         Ok(())
     }
 }

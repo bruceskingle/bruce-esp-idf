@@ -1,4 +1,4 @@
-//! Adoption: an app, e.g. Marco Sparko, takes over managing the device, after which only it can use the API, see
+//! Adoption: an app, e.g. Bruce's Smart Home, takes over managing the device, after which only it can use the API, see
 //! api.rs, and the /config page only says so, see ConfigManager::set_managed.
 //!
 //! 1. The app asks the device to start pairing, and the device shows a 6 digit code on its screen, see
@@ -32,7 +32,7 @@ const MAX_ATTEMPTS: u8 = 3;
 /// waited while the HTTP server, which serves one at a time, sent another a page of records.
 const SIGNATURE_WINDOW: i64 = 5 * 60;
 /// What a signed request's Authorization header starts with, see is_signed.
-pub const SIGNATURE_SCHEME: &str = "Sparko-HMAC-SHA256 ";
+pub const SIGNATURE_SCHEME: &str = "Bruce-HMAC-SHA256 ";
 /// How long the BOOT button must be held to release the device.
 const RELEASE_HOLD: Duration = Duration::from_secs(5);
 /// How long the screen says the device has been adopted or released, see AdoptionOverlay.
@@ -102,7 +102,7 @@ impl Adoption {
 
     /// Whether a request signed with this Authorization header may read the API over plain HTTP: any if the device has
     /// not been adopted, as over HTTPS, otherwise only one signed with the key, as
-    /// Sparko-HMAC-SHA256 <time>:<signature>, the time in seconds since 1970, within SIGNATURE_WINDOW of the device's,
+    /// Bruce-HMAC-SHA256 <time>:<signature>, the time in seconds since 1970, within SIGNATURE_WINDOW of the device's,
     /// and the signature the HMAC-SHA256, as hex, with the key, as its 32 bytes, of "<method> <uri> <time>", e.g.
     /// "GET /api/capture/tesla/records?since=2026-10-30T06:00:00Z 1793340000". Someone who sees a request can only
     /// make it again, within the window, which for reading does no harm.
@@ -369,7 +369,7 @@ impl<DM: bruce_embedded_std::graphics::DisplayManager> AdoptionOverlay<DM> {
 impl<DM: bruce_embedded_std::graphics::DisplayManager>
     bruce_embedded_std::task::scheduler::ScheduledTask<crate::Esp32Platform> for AdoptionOverlay<DM>
 {
-    fn run(&mut self, _sparko: &mut crate::Esp32Platform) -> anyhow::Result<()> {
+    fn run(&mut self, _platform: &mut crate::Esp32Platform) -> anyhow::Result<()> {
         let shown = match (self.adoption.pairing(), self.adoption.notice()) {
             (Some((code, left)), _) => Some(Shown::Pairing(code, left.as_secs())),
             (None, Some(text)) => Some(Shown::Notice(text)),

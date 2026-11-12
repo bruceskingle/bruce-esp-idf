@@ -73,7 +73,7 @@ impl Feature for Core {
 
     fn start(
         &mut self,
-        _sparko: &mut Esp32Platform,
+        _platform: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
         config: CoreConfig,
     ) -> anyhow::Result<()> {
@@ -93,7 +93,7 @@ impl Feature for Core {
 pub struct ResolveTask {}
 
 impl ScheduledTask<Esp32Platform> for ResolveTask {
-    fn run(&mut self, _sparko_cyd: &mut Esp32Platform) -> anyhow::Result<()> {
+    fn run(&mut self, _platform: &mut Esp32Platform) -> anyhow::Result<()> {
         log::info!("Top of loop");
 
         let datetime = Local::now();

@@ -60,7 +60,7 @@ impl Feature for DynDns2 {
 
     fn start(
         &mut self,
-        _sparko: &mut Esp32Platform,
+        _platform: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
         config: DynDns2Config,
     ) -> anyhow::Result<()> {
@@ -83,7 +83,7 @@ pub struct ResolveTask {
 }
 
 impl ScheduledTask<Esp32Platform> for ResolveTask {
-    fn run(&mut self, _sparko_cyd: &mut Esp32Platform) -> anyhow::Result<()> {
+    fn run(&mut self, _platform: &mut Esp32Platform) -> anyhow::Result<()> {
         self.execute()
     }
 

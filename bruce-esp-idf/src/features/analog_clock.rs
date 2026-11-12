@@ -95,7 +95,7 @@ impl Feature for AnalogClock {
 
     fn start(
         &mut self,
-        sparko: &mut Esp32Platform,
+        platform: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
         config: AnalogClockConfig,
     ) -> anyhow::Result<()> {
@@ -123,7 +123,7 @@ impl Feature for AnalogClock {
         initializer.add_task(
             Box::new(ResolveTask {
                 clock_renderer: ClockRenderer::new(
-                    &sparko.display_manager,
+                    &platform.display_manager,
                     self.layout,
                     clock_color(&config),
                     bg_color(&config),
@@ -164,7 +164,7 @@ impl<DM> ScheduledTask<Esp32Platform> for ResolveTask<DM>
 where
     DM: DisplayManager,
 {
-    // fn run(&mut self, _sparko_cyd: &dyn Esp32Platform) -> anyhow::Result<()> {
+    // fn run(&mut self, _platform: &dyn Esp32Platform) -> anyhow::Result<()> {
     //     let clock_renderer =
     // }
 
@@ -172,7 +172,7 @@ where
         "Analog Clock"
     }
 
-    fn run(&mut self, _sparko_embedded: &mut Esp32Platform) -> anyhow::Result<()> {
+    fn run(&mut self, _platform: &mut Esp32Platform) -> anyhow::Result<()> {
         self.clock_renderer.update()
     }
 }

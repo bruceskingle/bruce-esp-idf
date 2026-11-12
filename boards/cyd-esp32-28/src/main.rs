@@ -13,7 +13,7 @@ fn main() -> anyhow::Result<()> {
         64,
     )?;
 
-    let sparko_esp32 = builder
+    let runner = builder
         .with_feature(Box::new(DynDns2::new()?))?
         .with_feature(Box::new(AnalogClock::builder().build()?))?
         .with_feature(Box::new(BinaryClock::new_spi(smart_leds)))?
@@ -21,5 +21,5 @@ fn main() -> anyhow::Result<()> {
         .with_firmware(bruce_esp_idf::firmware!())
         .build()?;
 
-    sparko_esp32.start()
+    runner.start()
 }

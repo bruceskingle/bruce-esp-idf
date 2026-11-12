@@ -33,12 +33,17 @@ impl Feature for TemperatureHumidity {
 
     fn start(
         &mut self,
-        sparko: &mut Esp32Platform,
+        platform: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
         config: TemperatureHumidityConfig,
     ) -> anyhow::Result<()> {
         crate::shtc3::set_offset_tenths(config.offset_tenths.unwrap_or(0));
-        initializer.add_task(Box::new(LogTask { sensor: sparko.shtc3() }), "0 * * * * *")?;
+        initializer.add_task(
+            Box::new(LogTask {
+                sensor: platform.shtc3(),
+            }),
+            "0 * * * * *",
+        )?;
         Ok(())
     }
 }
@@ -53,7 +58,7 @@ impl ScheduledTask<Esp32Platform> for LogTask {
         "Temperature and Humidity"
     }
 
-    fn run(&mut self, _sparko: &mut Esp32Platform) -> anyhow::Result<()> {
+    fn run(&mut self, _platform: &mut Esp32Platform) -> anyhow::Result<()> {
         let reading = self.sensor.read()?;
         info!(
             "Temperature {:.1} °C, humidity {:.0}% (sensor {:.1} °C, {:.0}%)",

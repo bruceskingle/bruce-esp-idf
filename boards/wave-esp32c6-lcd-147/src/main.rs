@@ -23,9 +23,9 @@ fn main() {
 }
 
 fn run() -> anyhow::Result<()> {
-    // let mut builder = SparkoCyd::Builder::new();
+    // let mut builder = Esp32Platform::Builder::new();
 
-    // let mut sparko_cyd = builder
+    // let mut platform = builder
     //     .with_feature(DynDns2::new())
     //     .build()?;
 
@@ -39,7 +39,7 @@ fn run() -> anyhow::Result<()> {
         64,
     )?;
 
-    let sparko_esp32 = builder
+    let runner = builder
         .with_feature(Box::new(DynDns2::new()?))?
         .with_feature(Box::new(
             AnalogClock::builder()
@@ -68,10 +68,10 @@ fn run() -> anyhow::Result<()> {
     // features.push(Box::new(DynDns2::new()?));
 
     // log::info!("Trace 1");
-    // let mut sparko_cyd = SparkoCyd::new(features)?;
+    // let mut platform = Esp32Platform::new(features)?;
 
-    // let cloned_ap_mode = sparko_cyd.ap_mode.clone();
-    // sparko_cyd.server_manager.fn_handler("/", Method::Get, move |req| {
+    // let cloned_ap_mode = platform.ap_mode.clone();
+    // platform.server_manager.fn_handler("/", Method::Get, move |req| {
 
     //         // info!("Received request for / from {}", req.connection().remote_addr());
 
@@ -115,9 +115,9 @@ fn run() -> anyhow::Result<()> {
     //     })?;
 
     log::info!("Trace 2");
-    sparko_esp32.start()
+    runner.start()
     // ?;
-    // sparko_cyd.run()
+    // platform.run()
 }
 
 // log::info!("Trace 3");
@@ -136,7 +136,7 @@ fn run() -> anyhow::Result<()> {
 // loop {
 //     log::info!("Top of loop");
 
-//     // sparko_cyd.led_manager.set_color(r,g,b)?;
+//     // platform.led_manager.set_color(r,g,b)?;
 
 //     // let c = r;
 //     // r = b;

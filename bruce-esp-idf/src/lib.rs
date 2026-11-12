@@ -169,7 +169,7 @@ where
 //     fn do_init(&self, init: &mut Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor>;
 //     fn start_with_config(
 //         &mut self,
-//         sparko: &mut Esp32Platform,
+//         platform: &mut Esp32Platform,
 //         initializer: &mut Esp32PlatformInitializer,
 //         config: &ConfigSpec,
 //     ) -> anyhow::Result<()>;
@@ -178,19 +178,19 @@ where
 // pub trait Feature<C: FeatureConfig>: DynFeature {
 //     fn start_with_config(
 //         &mut self,
-//         sparko: &mut Esp32Platform,
+//         platform: &mut Esp32Platform,
 //         initializer: &mut Esp32PlatformInitializer,
 //         config: &ConfigSpec,
 //     ) -> anyhow::Result<()> {
 //         let typed_config = C::from_config_spec(config)?;
-//         self.start(sparko, initializer, typed_config)
+//         self.start(platform, initializer, typed_config)
 //     }
 
 //     fn init(&self, init: &mut Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor>;
 
 //     fn start(
 //         &mut self,
-//         sparko: &mut Esp32Platform,
+//         platform: &mut Esp32Platform,
 //         initializer: &mut Esp32PlatformInitializer,
 //         config: C,
 //     ) -> anyhow::Result<()>;
@@ -201,7 +201,7 @@ pub trait DynFeature {
 
     fn start_with_config(
         &mut self,
-        sparko: &mut Esp32Platform,
+        platform: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
         config: &ConfigSpec,
     ) -> anyhow::Result<()>;
@@ -214,7 +214,7 @@ pub trait Feature {
 
     fn start(
         &mut self,
-        sparko: &mut Esp32Platform,
+        platform: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
         config: Self::Config,
     ) -> anyhow::Result<()>;
@@ -227,11 +227,11 @@ impl<F: Feature> DynFeature for F {
 
     fn start_with_config(
         &mut self,
-        sparko: &mut Esp32Platform,
+        platform: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
         config: &ConfigSpec,
     ) -> anyhow::Result<()> {
         let typed_config = F::Config::from_config_spec(config)?;
-        self.start(sparko, initializer, typed_config)
+        self.start(platform, initializer, typed_config)
     }
 }

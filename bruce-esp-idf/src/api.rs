@@ -54,7 +54,7 @@ impl ApiServer {
             // Its own control port, as the HTTP server has the default one.
             ctrl_port: 32769,
             // Each HTTPS connection needs about 30 KB while it is open, see sdkconfig.defaults, so only one, which an app
-            // can share by making its requests one at a time, as marco-sparko does, and a new one closes the oldest.
+            // can share by making its requests one at a time, as bruce-smart-home does, and a new one closes the oldest.
             max_open_sockets: 1,
             // It needed about 5 KB, with a TLS handshake, of the default 10 KB.
             stack_size: 7168,

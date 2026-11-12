@@ -1,7 +1,7 @@
 {
-	// A workspace for working on Bruce's ESP-IDF Platform: this repository, each board as a folder of its own, and the
-	// repositories next to it which it builds with, see the README's Development section. rust-analyzer checks one board
-	// at a time, the one rust-analyzer.linkedProjects names, below; switch boards with its commented out lines. The
+	// A workspace for working on Bruce's ESP-IDF Platform: this repository, as its files are, and the repositories next
+	// to it which it builds with, see the README's Development section. rust-analyzer checks one board at a time, the
+	// one rust-analyzer.linkedProjects names, below; switch boards with its commented out lines. The
 	// marco-sparko, cache, bruce-db, bruce-util-progress and bruce-method-release folders are the author's own setup: to
 	// look at this repository alone, comment them out, and any of the others not checked out next to it.
 	"folders": [
@@ -10,44 +10,14 @@
 			"path": "../marco-sparko"
 		},
 		{
-			"name": "Root Files",
-			"path": "."
+			"path": "../../.bruce-smart-home-data"
+		},
+		{
+			"path": "../bruce-graphql"
 		},
 		{
 			"name": "bruce-esp-idf",
-			"path": "bruce-esp-idf"
-		},
-		{
-			"name": "cyd-esp32-28",
-			"path": "boards/cyd-esp32-28"
-		},
-		{
-			"name": "esp32-devkit-v1",
-			"path": "boards/esp32-devkit-v1"
-		},
-		{
-			"name": "esp32c3-supermini",
-			"path": "boards/esp32c3-supermini"
-		},
-		{
-			"name": "guition-jc3248w535c",
-			"path": "boards/guition-jc3248w535c"
-		},
-		{
-			"name": "seeed-esp32c6-xiao",
-			"path": "boards/seeed-esp32c6-xiao"
-		},
-		{
-			"name": "wave-esp32c6-lcd-147",
-			"path": "boards/wave-esp32c6-lcd-147"
-		},
-		{
-			"name": "wave-esp32c6-touch-147",
-			"path": "boards/wave-esp32c6-touch-147"
-		},
-		{
-			"name": "wave-esp32s3-rlcd-42",
-			"path": "boards/wave-esp32s3-rlcd-42"
+			"path": "."
 		},
 		{
 			"name": "bruce-embedded-std",
@@ -62,9 +32,6 @@
 			"path": "../bruce-embedded-flash"
 		},
 		{
-			"path": "../../.marco-sparko-cache"
-		},
-		{
 			"path": "../bruce-db"
 		},
 		{
@@ -77,8 +44,6 @@
 	"settings": {
 		"explorer.autoReveal": false,
 		"files.exclude": {
-			"bruce-esp-idf": true,
-			"boards": true,
 			// ".vscode": true,
 			// "target": true
 		},
@@ -157,7 +122,7 @@
 				"label": "Firmware: Build XIAO C6",
 				"type": "shell",
 				"command": "./build.sh seeed-esp32c6-xiao",
-				"options": { "cwd": "${workspaceFolder:Root Files}" },
+				"options": { "cwd": "${workspaceFolder:bruce-esp-idf}" },
 				"problemMatcher": ["$rustc"]
 			}
 		]

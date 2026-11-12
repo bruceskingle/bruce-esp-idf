@@ -36,7 +36,7 @@ needs an ESP32 or ESP-IDF here; this depends on bruce-embedded-std, never the ot
 
 Board names are the maker, the chip, then the maker's model with its size without the dot, e.g. Waveshare's
 ESP32-S3-RLCD-4.2 is `wave-esp32s3-rlcd-42`; an unbranded board starts with its chip, e.g. `esp32c3-supermini`.
-Capture firmware features in marco-sparko use the same names.
+Capture firmware features in bruce-smart-home use the same names.
 
 Each board crate selects exactly one `board-*` feature of `bruce-esp-idf`, which turns on the functional features
 (`display`, `rgb-led`, `smart-led-spi`, ...) its hardware has. Code behind a functional feature only compiles for
@@ -79,9 +79,9 @@ This is the model every piece of on-board hardware follows, so that the platform
   the board plugged in and replaces what is on it.
 - `../bruce-embedded-flash` holds the host programs, a workspace built with the default toolchain, not `esp`:
   `bruce-embedded-firmware`, the shared firmware folder, `<data dir>/bruce-embedded-std/firmware/<repo>/<version>/`,
-  e.g. `bruce-smart-home/dev/` for marco-sparko's capture builds, and later the downloader from GitHub releases,
+  e.g. `bruce-smart-home/dev/` for bruce-smart-home's capture builds, and later the downloader from GitHub releases,
   `bruce-embedded-flash`, the flashing library and command line, and `bruce-embedded-flash-ui`, the Dioxus component,
-  `Flasher`, which marco-sparko's Devices page uses, and the desktop app built with it,
+  `Flasher`, which bruce-smart-home's Devices page uses, and the desktop app built with it,
   `cargo run --features desktop -- <ELF>...`.
 - ESP-IDF tools are installed globally (`ESP_IDF_TOOLS_INSTALL_DIR = "global"`, in `~/.espressif`), not per project.
 - The cyd-esp32-28 board depends on a local fork at `../../../ws2812-esp32-rmt-driver` (i.e. `~/git/ws2812-esp32-rmt-driver`).
@@ -115,7 +115,7 @@ tried twice and does not work with the ESP HTTP server and Rust's type system: d
 ## Device API
 
 When a board's `sdkconfig.defaults` sets `CONFIG_ESP_HTTPS_SERVER_ENABLE=y` (with the mbedtls dynamic buffer options,
-see marco-sparko's `capture/sdkconfig.defaults`), the platform runs an HTTPS API on port 443 once on the Wi-Fi
+see bruce-smart-home's `capture/sdkconfig.defaults`), the platform runs an HTTPS API on port 443 once on the Wi-Fi
 (`api.rs`, cfg `esp_idf_esp_https_server_enable`, made visible by `bruce-esp-idf/build.rs`), next to the HTTP server,
 which stays for the captive portal and `/config`. The device makes an EC P-256 key and self-signed certificate on
 first boot and keeps them in the `device` NVS namespace (`identity.rs`); its ID is the Wi-Fi MAC. Endpoints:
@@ -147,8 +147,8 @@ tens of KB of heap each on the CYD (no PSRAM), which is why reads use HTTP; chan
 ## Working with the owner
 
 - Never commit, push or offer to: the owner reviews and commits.
-- This repo is developed alongside `../marco-sparko`, a desktop app which reads data from ESP32 "Capture Devices"
-  built on this platform, whose firmware is in marco-sparko's `capture/`. Claude's memory of each repo is kept with it,
-  and marco-sparko's, the workspace's, lists this one's too.
+- This repo is developed alongside `../bruce-smart-home`, a desktop app which reads data from ESP32 "Capture Devices"
+  built on this platform, whose firmware is in bruce-smart-home's `capture/`. Claude's memory of each repo is kept with it,
+  and bruce-smart-home's, the workspace's, lists this one's too.
 - The device pages' look, `../bruce-embedded-std/bruce-embedded-std/src/http_server.rs`, is just what could be written by hand; the
   owner would prefer a dark theme, when they are redesigned, which is not planned yet.

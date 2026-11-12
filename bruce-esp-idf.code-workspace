@@ -2,12 +2,13 @@
 	// A workspace for working on Bruce's ESP-IDF Platform: this repository, as its files are, and the repositories next
 	// to it which it builds with, see the README's Development section. rust-analyzer checks one board at a time, the
 	// one rust-analyzer.linkedProjects names, below; switch boards with its commented out lines. The
-	// marco-sparko, cache, bruce-db, bruce-util-progress and bruce-method-release folders are the author's own setup: to
-	// look at this repository alone, comment them out, and any of the others not checked out next to it.
+	// bruce-smart-home, its data, bruce-graphql, bruce-db, bruce-util-progress and bruce-method-release folders are the
+	// author's own setup: to look at this repository alone, comment them out, and any of the others not checked out next
+	// to it.
 	"folders": [
 		{
-			"name": "marco-sparko",
-			"path": "../marco-sparko"
+			"name": "bruce-smart-home",
+			"path": "../bruce-smart-home"
 		},
 		{
 			"path": "../../.bruce-smart-home-data"
@@ -56,7 +57,7 @@
 			// "boards/wave-esp32c6-touch-147/Cargo.toml",
 			// "boards/seeed-esp32c6-xiao/Cargo.toml",
 			"../bruce-embedded-std/Cargo.toml", // This is needed
-			"../marco-sparko/Cargo.toml",
+			"../bruce-smart-home/Cargo.toml",
 			// "bruce-esp-idf/Cargo.toml", this causes weird errors but I dont understand why
 		],
 		// // "rust-analyzer.cargo.features": "all",

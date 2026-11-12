@@ -1,11 +1,11 @@
-use embedded_graphics::{
-    prelude::{Point, Size},
-    primitives::Rectangle,
-};
 use bruce_embedded_std::DisplayOrientation;
 use bruce_esp_idf::{
     Esp32Platform,
     features::{analog_clock::AnalogClock, binary_clock::BinaryClock, dyndns2::DynDns2},
+};
+use embedded_graphics::{
+    prelude::{Point, Size},
+    primitives::Rectangle,
 };
 
 fn main() {

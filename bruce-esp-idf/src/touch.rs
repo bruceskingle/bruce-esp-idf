@@ -7,7 +7,7 @@ pub struct TouchPoint {
     pub y: u16,
 }
 
-#[cfg(feature = "AXS5106L")]
-pub mod axs5106l;
 #[cfg(feature = "touch-axs15231b")]
 pub mod axs15231b;
+#[cfg(feature = "AXS5106L")]
+pub mod axs5106l;

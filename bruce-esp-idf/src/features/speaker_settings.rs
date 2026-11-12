@@ -3,10 +3,10 @@
 
 use std::time::Duration;
 
+use bruce_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
 use esp_idf_svc::http::Method;
 use esp_idf_svc::io::Read;
 use log::warn;
-use bruce_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
 
 use crate::http::EspHttpServerManager;
 use crate::speaker::Speaker;
@@ -17,7 +17,13 @@ use crate::{Esp32Platform, Esp32PlatformInitializer, Feature, FeatureDescriptor}
 pub struct SpeakerConfig {
     /// In percent, see Speaker::set_volume. 100 if not set. A slider, which plays a tone at each volume it is moved
     /// to, see PREVIEW.
-    #[config(label = "Volume (%)", min = 0, max = 100, default = 100, preview = "/speaker/preview")]
+    #[config(
+        label = "Volume (%)",
+        min = 0,
+        max = 100,
+        default = 100,
+        preview = "/speaker/preview"
+    )]
     pub volume: Option<i32>,
 }
 
@@ -27,10 +33,18 @@ impl Feature for SpeakerSettings {
     type Config = SpeakerConfig;
 
     fn init(&self, _initializer: &mut Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor> {
-        Ok(FeatureDescriptor { name: "Speaker".to_string(), config: SpeakerConfig::to_config_spec()? })
+        Ok(FeatureDescriptor {
+            name: "Speaker".to_string(),
+            config: SpeakerConfig::to_config_spec()?,
+        })
     }
 
-    fn start(&mut self, sparko: &mut Esp32Platform, _initializer: &mut Esp32PlatformInitializer, config: SpeakerConfig) -> anyhow::Result<()> {
+    fn start(
+        &mut self,
+        sparko: &mut Esp32Platform,
+        _initializer: &mut Esp32PlatformInitializer,
+        config: SpeakerConfig,
+    ) -> anyhow::Result<()> {
         sparko.speaker().set_volume(volume(&config));
         Ok(())
     }
@@ -61,7 +75,10 @@ pub(crate) fn add_preview(server_manager: &mut EspHttpServerManager<'static>, sp
             .and_then(|(_, value)| value.parse::<i32>().ok());
         match volume {
             Some(volume) => {
-                if let Err(error) = speaker.play_at(volume.clamp(0, 100) as u8, &crate::speaker::tone(880.0, Duration::from_millis(120))) {
+                if let Err(error) = speaker.play_at(
+                    volume.clamp(0, 100) as u8,
+                    &crate::speaker::tone(880.0, Duration::from_millis(120)),
+                ) {
                     warn!("Unable to play the volume's preview: {error:#}");
                 }
                 request.into_ok_response()?;

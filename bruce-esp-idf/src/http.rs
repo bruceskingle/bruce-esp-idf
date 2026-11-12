@@ -1,12 +1,12 @@
 use std::{io::Write, sync::Arc};
 
+use bruce_embedded_std::http_server::{HttpMethod, HttpServerManager};
 use esp_idf_svc::http::{
     Method,
     server::{EspHttpConnection, EspHttpServer},
 };
 use indexmap::IndexMap;
 use log::info;
-use bruce_embedded_std::http_server::{HttpMethod, HttpServerManager};
 use url::form_urlencoded;
 
 /*
@@ -81,9 +81,7 @@ impl EspHttpServerManager<'_> {
 
     pub fn on<F>(&mut self, uri: &str, method: Method, f: F) -> anyhow::Result<&mut Self>
     where
-        F: for<'r> Fn(
-                esp_idf_svc::http::server::Request<&mut EspHttpConnection<'r>>,
-            ) -> anyhow::Result<()>
+        F: for<'r> Fn(esp_idf_svc::http::server::Request<&mut EspHttpConnection<'r>>) -> anyhow::Result<()>
             + Send
             + 'static,
     {
@@ -92,10 +90,7 @@ impl EspHttpServerManager<'_> {
         Ok(self)
     }
 
-    pub fn init_captive_portal(
-        &mut self,
-        ap_mode: &Arc<std::sync::Mutex<bool>>,
-    ) -> anyhow::Result<()> {
+    pub fn init_captive_portal(&mut self, ap_mode: &Arc<std::sync::Mutex<bool>>) -> anyhow::Result<()> {
         let ap_mode_clone = ap_mode.clone();
 
         self.on("/generate_204", Method::Get, move |req| {
@@ -173,14 +168,13 @@ impl HttpServerManager for EspHttpServerManager<'_> {
         method: HttpMethod,
         f: Box<dyn Fn(&mut dyn Write) -> anyhow::Result<()> + Send>,
     ) -> anyhow::Result<()> {
-        self.server
-            .fn_handler(uri, to_esp_method(method), move |req| {
-                let mut wrapper = WriteWrapper {
-                    resp: req.into_ok_response()?,
-                };
+        self.server.fn_handler(uri, to_esp_method(method), move |req| {
+            let mut wrapper = WriteWrapper {
+                resp: req.into_ok_response()?,
+            };
 
-                f(&mut wrapper)
-            })?;
+            f(&mut wrapper)
+        })?;
 
         Ok(())
     }
@@ -225,14 +219,13 @@ impl HttpServerManager for EspHttpServerManager<'_> {
         headers: &'static [(&'static str, &'static str)],
         f: Box<dyn Fn(&mut dyn Write) -> anyhow::Result<()> + Send>,
     ) -> anyhow::Result<()> {
-        self.server
-            .fn_handler(uri, to_esp_method(method), move |req| {
-                let resp = req.into_response(status, message, headers)?;
+        self.server.fn_handler(uri, to_esp_method(method), move |req| {
+            let resp = req.into_response(status, message, headers)?;
 
-                let mut wrapper = WriteWrapper { resp };
+            let mut wrapper = WriteWrapper { resp };
 
-                f(&mut wrapper)
-            })?;
+            f(&mut wrapper)
+        })?;
 
         Ok(())
     }

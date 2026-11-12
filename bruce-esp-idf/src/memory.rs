@@ -37,9 +37,9 @@ fn tasks() -> Value {
     let count = unsafe { esp_idf_sys::uxTaskGetNumberOfTasks() } as usize;
     // Room for a few more, in case tasks start while this runs.
     let mut statuses = vec![esp_idf_sys::TaskStatus_t::default(); count + 4];
-    let count = unsafe {
-        esp_idf_sys::uxTaskGetSystemState(statuses.as_mut_ptr(), statuses.len() as _, std::ptr::null_mut())
-    } as usize;
+    let count =
+        unsafe { esp_idf_sys::uxTaskGetSystemState(statuses.as_mut_ptr(), statuses.len() as _, std::ptr::null_mut()) }
+            as usize;
     let mut tasks: Vec<Value> = statuses[..count]
         .iter()
         .map(|status| {

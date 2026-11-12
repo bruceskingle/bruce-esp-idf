@@ -13,9 +13,9 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use bruce_embedded_std::graphics::{Color, Console, DisplayManager};
 use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
 use esp_idf_sys::{self as sys, esp};
-use bruce_embedded_std::graphics::{Color, Console, DisplayManager};
 
 /// The panel's own size, portrait.
 const PANEL_WIDTH: usize = 320;
@@ -79,7 +79,13 @@ impl Axs15231b {
         bus.data6_io_num = -1;
         bus.data7_io_num = -1;
         bus.max_transfer_sz = STRIP_BYTES as i32;
-        esp!(unsafe { sys::spi_bus_initialize(sys::spi_host_device_t_SPI2_HOST, &bus, sys::spi_common_dma_t_SPI_DMA_CH_AUTO) })?;
+        esp!(unsafe {
+            sys::spi_bus_initialize(
+                sys::spi_host_device_t_SPI2_HOST,
+                &bus,
+                sys::spi_common_dma_t_SPI_DMA_CH_AUTO,
+            )
+        })?;
 
         let mut config: sys::esp_lcd_panel_io_spi_config_t = Default::default();
         config.cs_gpio_num = pins.chip_select;
@@ -92,10 +98,17 @@ impl Axs15231b {
         config.lcd_param_bits = 8;
         config.flags.set_quad_mode(1);
         let mut io: sys::esp_lcd_panel_io_handle_t = std::ptr::null_mut();
-        esp!(unsafe { sys::esp_lcd_new_panel_io_spi(sys::spi_host_device_t_SPI2_HOST as sys::esp_lcd_spi_bus_handle_t, &config, &mut io) })?;
+        esp!(unsafe {
+            sys::esp_lcd_new_panel_io_spi(
+                sys::spi_host_device_t_SPI2_HOST as sys::esp_lcd_spi_bus_handle_t,
+                &config,
+                &mut io,
+            )
+        })?;
 
         let strip = || -> anyhow::Result<*mut u8> {
-            let strip = unsafe { sys::heap_caps_malloc(STRIP_BYTES, sys::MALLOC_CAP_DMA | sys::MALLOC_CAP_INTERNAL) } as *mut u8;
+            let strip = unsafe { sys::heap_caps_malloc(STRIP_BYTES, sys::MALLOC_CAP_DMA | sys::MALLOC_CAP_INTERNAL) }
+                as *mut u8;
             anyhow::ensure!(!strip.is_null(), "no internal RAM for the display's strips");
             Ok(strip)
         };
@@ -134,7 +147,11 @@ impl Axs15231b {
 
     fn command(&mut self, command: u8, parameters: &[u8]) -> anyhow::Result<()> {
         let lcd_command = ((WRITE_COMMAND << 24) | ((command as u32) << 8)) as i32;
-        let (pointer, length) = if parameters.is_empty() { (std::ptr::null(), 0) } else { (parameters.as_ptr() as *const _, parameters.len()) };
+        let (pointer, length) = if parameters.is_empty() {
+            (std::ptr::null(), 0)
+        } else {
+            (parameters.as_ptr() as *const _, parameters.len())
+        };
         esp!(unsafe { sys::esp_lcd_panel_io_tx_param(self.io, lcd_command, pointer, length) })?;
         Ok(())
     }
@@ -225,7 +242,10 @@ impl DisplayManager for Axs15231bDisplayManager {
 
     /// FONT_10X20, 48 characters across and 16 lines down, as the screen is large and sharp enough for it.
     fn console(&self) -> Console {
-        Console { font: &embedded_graphics::mono_font::ascii::FONT_10X20, margin: 8 }
+        Console {
+            font: &embedded_graphics::mono_font::ascii::FONT_10X20,
+            margin: 8,
+        }
     }
 
     fn overlay_active(&self) -> bool {
@@ -268,11 +288,16 @@ impl DisplayManager for Axs15231bDisplayManager {
 /// Sends the frame to the panel whenever it has changed, every FLUSH_INTERVAL, for as long as the device runs.
 pub fn spawn_flusher(display_manager: &Arc<Mutex<Axs15231bDisplayManager>>) -> anyhow::Result<()> {
     let display_manager = display_manager.clone();
-    std::thread::Builder::new().name("axs15231b flush".into()).stack_size(4096).spawn(move || loop {
-        std::thread::sleep(FLUSH_INTERVAL);
-        if let Err(error) = display_manager.lock().unwrap().display.flush() {
-            log::warn!("Unable to update the display, {error:#}");
-        }
-    })?;
+    std::thread::Builder::new()
+        .name("axs15231b flush".into())
+        .stack_size(4096)
+        .spawn(move || {
+            loop {
+                std::thread::sleep(FLUSH_INTERVAL);
+                if let Err(error) = display_manager.lock().unwrap().display.flush() {
+                    log::warn!("Unable to update the display, {error:#}");
+                }
+            }
+        })?;
     Ok(())
 }

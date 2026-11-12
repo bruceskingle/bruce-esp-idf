@@ -33,9 +33,18 @@ struct KeptAllocation {
 }
 
 #[unsafe(link_section = ".rtc_noinit")]
-static mut KEPT: Kept = Kept { magic: 0, length: 0, message: [0; LENGTH] };
+static mut KEPT: Kept = Kept {
+    magic: 0,
+    length: 0,
+    message: [0; LENGTH],
+};
 #[unsafe(link_section = ".rtc_noinit")]
-static mut KEPT_ALLOCATION: KeptAllocation = KeptAllocation { magic: 0, size: 0, free: 0, largest: 0 };
+static mut KEPT_ALLOCATION: KeptAllocation = KeptAllocation {
+    magic: 0,
+    size: 0,
+    free: 0,
+    largest: 0,
+};
 
 static LAST: OnceLock<Option<String>> = OnceLock::new();
 /// How many allocations have failed since the device started, which it may have recovered from.
@@ -63,9 +72,12 @@ pub fn install() {
             let length = (kept.length as usize).min(LENGTH);
             String::from_utf8_lossy(&kept.message[..length]).into_owned()
         });
-        let out_of_memory = (allocation.magic == ALLOCATION_MAGIC && crate::reset_reason() == "Panic").then(|| format!(
-            "Out of memory: {} bytes could not be allocated, with {} free, the largest block {}",
-            allocation.size, allocation.free, allocation.largest));
+        let out_of_memory = (allocation.magic == ALLOCATION_MAGIC && crate::reset_reason() == "Panic").then(|| {
+            format!(
+                "Out of memory: {} bytes could not be allocated, with {} free, the largest block {}",
+                allocation.size, allocation.free, allocation.largest
+            )
+        });
         kept.magic = 0;
         allocation.magic = 0;
         panic.or(out_of_memory)

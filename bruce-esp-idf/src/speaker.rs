@@ -12,11 +12,11 @@ use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use anyhow::bail;
 use esp_idf_hal::delay::BLOCK;
 use esp_idf_hal::gpio::{Output, PinDriver};
 use esp_idf_hal::i2c::I2cDriver;
 use esp_idf_hal::i2s::{I2sDriver, I2sTx};
-use anyhow::bail;
 use log::info;
 
 /// The rate of the audio play takes, in samples a second.
@@ -89,7 +89,11 @@ pub struct Speaker {
 
 impl Speaker {
     /// Sets up the codec on i2c, and starts the I2S output, with the amplifier off.
-    pub fn new(i2c: Arc<Mutex<I2cDriver<'static>>>, mut i2s: I2sDriver<'static, I2sTx>, mut amplifier: PinDriver<'static, Output>) -> anyhow::Result<Self> {
+    pub fn new(
+        i2c: Arc<Mutex<I2cDriver<'static>>>,
+        mut i2s: I2sDriver<'static, I2sTx>,
+        mut amplifier: PinDriver<'static, Output>,
+    ) -> anyhow::Result<Self> {
         amplifier.set_low()?;
         {
             let mut bus = i2c.lock().unwrap();
@@ -102,7 +106,10 @@ impl Speaker {
         }
         i2s.tx_enable()?;
         info!("Speaker started");
-        Ok(Speaker { inner: Arc::new(Mutex::new(Inner { i2c, i2s, amplifier })), volume: Arc::new(AtomicU8::new(100)) })
+        Ok(Speaker {
+            inner: Arc::new(Mutex::new(Inner { i2c, i2s, amplifier })),
+            volume: Arc::new(AtomicU8::new(100)),
+        })
     }
 
     /// Sets the volume every sound plays at, in percent, see level, from the Speaker feature's settings.
@@ -177,7 +184,9 @@ pub fn wav_samples(wav: &[u8]) -> anyhow::Result<Vec<i16>> {
         // Chunks are padded to an even size.
         chunks = &chunks[(8 + size + size % 2).min(chunks.len())..];
     }
-    let (Some(format), Some(data)) = (format, data) else { bail!("the WAV file has no format or data") };
+    let (Some(format), Some(data)) = (format, data) else {
+        bail!("the WAV file has no format or data")
+    };
     let encoding = u16::from_le_bytes([format[0], format[1]]);
     let channels = u16::from_le_bytes([format[2], format[3]]) as usize;
     let rate = u32::from_le_bytes([format[4], format[5], format[6], format[7]]);
@@ -189,7 +198,10 @@ pub fn wav_samples(wav: &[u8]) -> anyhow::Result<Vec<i16>> {
     let mono: Vec<i16> = data
         .chunks_exact(2 * channels)
         .map(|frame| {
-            let sum: i32 = frame.chunks_exact(2).map(|sample| i16::from_le_bytes([sample[0], sample[1]]) as i32).sum();
+            let sum: i32 = frame
+                .chunks_exact(2)
+                .map(|sample| i16::from_le_bytes([sample[0], sample[1]]) as i32)
+                .sum();
             (sum / channels as i32) as i16
         })
         .collect();

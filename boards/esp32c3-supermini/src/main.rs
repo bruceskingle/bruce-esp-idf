@@ -1,14 +1,14 @@
+use bruce_esp_idf::{
+    Esp32Platform,
+    features::{binary_clock::BinaryClock, dyndns2::DynDns2},
+    smart_led::SmartLedsSpi,
+};
 use esp_idf_hal::{
     gpio::AnyIOPin,
     spi::{Dma, SpiDeviceDriver, SpiDriver, SpiDriverConfig},
     units::Hertz,
 };
 use log::info;
-use bruce_esp_idf::{
-    Esp32Platform,
-    features::{binary_clock::BinaryClock, dyndns2::DynDns2},
-    smart_led::SmartLedsSpi,
-};
 
 fn main() {
     log::info!("Hello, world!");

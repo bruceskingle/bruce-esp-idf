@@ -3,10 +3,10 @@
 //! much depending on the board and what it is doing: the offset corrects it, see shtc3.rs, set by comparing with a
 //! thermometer which can be trusted, after the board has run for a while.
 
-use log::info;
 use bruce_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
 use bruce_embedded_std::platform::PlatformInitializer;
 use bruce_embedded_std::task::scheduler::ScheduledTask;
+use log::info;
 
 use crate::{Esp32Platform, Esp32PlatformInitializer, Feature, FeatureDescriptor};
 
@@ -25,10 +25,18 @@ impl Feature for TemperatureHumidity {
     type Config = TemperatureHumidityConfig;
 
     fn init(&self, _initializer: &mut Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor> {
-        Ok(FeatureDescriptor { name: "TempHumidity".to_string(), config: TemperatureHumidityConfig::to_config_spec()? })
+        Ok(FeatureDescriptor {
+            name: "TempHumidity".to_string(),
+            config: TemperatureHumidityConfig::to_config_spec()?,
+        })
     }
 
-    fn start(&mut self, sparko: &mut Esp32Platform, initializer: &mut Esp32PlatformInitializer, config: TemperatureHumidityConfig) -> anyhow::Result<()> {
+    fn start(
+        &mut self,
+        sparko: &mut Esp32Platform,
+        initializer: &mut Esp32PlatformInitializer,
+        config: TemperatureHumidityConfig,
+    ) -> anyhow::Result<()> {
         crate::shtc3::set_offset_tenths(config.offset_tenths.unwrap_or(0));
         initializer.add_task(Box::new(LogTask { sensor: sparko.shtc3() }), "0 * * * * *")?;
         Ok(())
@@ -47,8 +55,10 @@ impl ScheduledTask<Esp32Platform> for LogTask {
 
     fn run(&mut self, _sparko: &mut Esp32Platform) -> anyhow::Result<()> {
         let reading = self.sensor.read()?;
-        info!("Temperature {:.1} °C, humidity {:.0}% (sensor {:.1} °C, {:.0}%)", reading.celsius, reading.humidity,
-            reading.sensor_celsius, reading.sensor_humidity);
+        info!(
+            "Temperature {:.1} °C, humidity {:.0}% (sensor {:.1} °C, {:.0}%)",
+            reading.celsius, reading.humidity, reading.sensor_celsius, reading.sensor_humidity
+        );
         Ok(())
     }
 }

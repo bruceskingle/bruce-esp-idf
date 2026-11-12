@@ -64,7 +64,12 @@ impl Shtc3 {
         let sensor_celsius = -45.0 + 175.0 * temperature as f32 / 65536.0;
         let sensor_humidity = 100.0 * humidity as f32 / 65536.0;
         let celsius = sensor_celsius + OFFSET_TENTHS.load(Ordering::Relaxed) as f32 / 10.0;
-        Ok(Reading { celsius, humidity: corrected_humidity(sensor_celsius, sensor_humidity, celsius), sensor_celsius, sensor_humidity })
+        Ok(Reading {
+            celsius,
+            humidity: corrected_humidity(sensor_celsius, sensor_humidity, celsius),
+            sensor_celsius,
+            sensor_humidity,
+        })
     }
 }
 

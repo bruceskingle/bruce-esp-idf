@@ -18,6 +18,7 @@
 
 use std::sync::Arc;
 
+use bruce_embedded_std::config_manager::ConfigManager;
 use esp_idf_svc::http::Method;
 use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
 use esp_idf_svc::io::Write;
@@ -25,11 +26,10 @@ use esp_idf_svc::nvs::{EspNvsPartition, NvsDefault};
 use esp_idf_svc::tls::X509;
 use log::info;
 use serde_json::{Value, json};
-use bruce_embedded_std::config_manager::ConfigManager;
 
 use crate::Firmware;
-use crate::http::EspHttpServerManager;
 use crate::adoption::{Adoption, PAIRING_TIME};
+use crate::http::EspHttpServerManager;
 use crate::identity::DeviceIdentity;
 
 /// The largest request body read, to protect the RAM.
@@ -67,25 +67,40 @@ impl ApiServer {
         let info_config = config_manager.clone();
         let info_adoption = adoption.clone();
         server.fn_handler("/api/info", Method::Get, move |request| {
-            respond(request, 200, &info(&info_identity, &info_config, &info_adoption, firmware))
+            respond(
+                request,
+                200,
+                &info(&info_identity, &info_config, &info_adoption, firmware),
+            )
         })?;
         let info_identity = identity.clone();
         let info_config = config_manager.clone();
         let info_adoption = adoption.clone();
         http.on("/api/info", Method::Get, move |request| {
-            respond(request, 200, &info(&info_identity, &info_config, &info_adoption, firmware))
+            respond(
+                request,
+                200,
+                &info(&info_identity, &info_config, &info_adoption, firmware),
+            )
         })?;
 
         let start_adoption = adoption.clone();
-        server.fn_handler("/api/adopt/start", Method::Post, move |request| match start_adoption.start_pairing() {
-            Ok(time) => respond(request, 200, &json!({ "expiresInSeconds": time.as_secs() })),
-            Err(error) => respond(request, 409, &json!({ "error": format!("{error:#}") })),
+        server.fn_handler("/api/adopt/start", Method::Post, move |request| {
+            match start_adoption.start_pairing() {
+                Ok(time) => respond(request, 200, &json!({ "expiresInSeconds": time.as_secs() })),
+                Err(error) => respond(request, 409, &json!({ "error": format!("{error:#}") })),
+            }
         })?;
 
         let adopt_adoption = adoption.clone();
         server.fn_handler("/api/adopt", Method::Post, move |mut request| {
             let result = read_json(&mut request).and_then(|body| {
-                let text = |name: &str| body.get(name).and_then(|value| value.as_str()).unwrap_or_default().to_string();
+                let text = |name: &str| {
+                    body.get(name)
+                        .and_then(|value| value.as_str())
+                        .unwrap_or_default()
+                        .to_string()
+                };
                 adopt_adoption.adopt(&text("code"), &text("key"))
             });
             match result {
@@ -127,7 +142,11 @@ impl ApiServer {
             match post_config.apply_json(&update) {
                 Ok(()) => {
                     info!("Config changed through the API");
-                    respond(request, 200, &json!({ "restartRequired": true, "config": post_config.to_json() }))
+                    respond(
+                        request,
+                        200,
+                        &json!({ "restartRequired": true, "config": post_config.to_json() }),
+                    )
                 }
                 Err(error) => respond(request, 400, &json!({ "error": format!("{error:#}") })),
             }
@@ -156,8 +175,15 @@ impl ApiServer {
             Ok::<(), anyhow::Error>(())
         })?;
 
-        info!("API server started on port 443, pairing codes last {} s", PAIRING_TIME.as_secs());
-        Ok(ApiServer { server, identity, adoption })
+        info!(
+            "API server started on port 443, pairing codes last {} s",
+            PAIRING_TIME.as_secs()
+        );
+        Ok(ApiServer {
+            server,
+            identity,
+            adoption,
+        })
     }
 
     pub fn identity(&self) -> &DeviceIdentity {
@@ -208,7 +234,11 @@ fn authorised(adoption: &Adoption, request: &Request<&mut EspHttpConnection<'_>>
 }
 
 pub(crate) fn unauthorised(request: Request<&mut EspHttpConnection<'_>>) -> anyhow::Result<()> {
-    respond(request, 401, &json!({ "error": "the device has been adopted, and this needs the adopting app's key" }))
+    respond(
+        request,
+        401,
+        &json!({ "error": "the device has been adopted, and this needs the adopting app's key" }),
+    )
 }
 
 /// What the device is: its ID, board, firmware, certificate fingerprint, whether it has been adopted, how long it has

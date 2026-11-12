@@ -7,10 +7,10 @@
 
 use std::sync::Mutex;
 
+use esp_idf_hal::adc::ADC1;
 use esp_idf_hal::adc::oneshot::config::{AdcChannelConfig, Calibration};
 use esp_idf_hal::adc::oneshot::{AdcChannelDriver, AdcDriver};
 use esp_idf_hal::gpio::Gpio4;
-use esp_idf_hal::adc::ADC1;
 use esp_idf_sys::EspError;
 
 /// How much the divider divides the cell's voltage by.
@@ -40,7 +40,9 @@ impl Battery {
             ..AdcChannelConfig::new()
         };
         let mut channel = AdcChannelDriver::new(driver, pin, &config)?;
-        Ok(Battery { read_millivolts: Mutex::new(Box::new(move || channel.read())) })
+        Ok(Battery {
+            read_millivolts: Mutex::new(Box::new(move || channel.read())),
+        })
     }
 
     /// The battery's voltage, the average of SAMPLES readings, to a hundredth of a volt, and how full that says it is.
@@ -52,7 +54,10 @@ impl Battery {
         }
         // To the hundredth of a volt which is shown, and how full it is from that, so that the two only change together.
         let volts = (total as f32 / SAMPLES as f32 / 1000.0 * DIVIDER * 100.0).round() / 100.0;
-        Ok(BatteryReading { volts, percent: percent(volts) })
+        Ok(BatteryReading {
+            volts,
+            percent: percent(volts),
+        })
     }
 }
 
@@ -82,7 +87,8 @@ pub fn percent(volts: f32) -> u8 {
     if volts >= last.0 {
         return last.1;
     }
-    CHARGE_CURVE.windows(2)
+    CHARGE_CURVE
+        .windows(2)
         .find(|pair| volts < pair[1].0)
         .map(|pair| {
             let ((low_volts, low), (high_volts, high)) = (pair[0], pair[1]);

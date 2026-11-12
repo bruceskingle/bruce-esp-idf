@@ -10,16 +10,16 @@ pub use esp32_platform::*;
 
 #[cfg(esp_idf_esp_https_server_enable)]
 pub mod api;
+#[cfg(feature = "battery")]
+pub mod battery;
+pub mod chip;
+pub mod push_button;
 #[cfg(feature = "sd-card")]
 pub mod sd_card;
 #[cfg(feature = "shtc3")]
 pub mod shtc3;
-#[cfg(feature = "battery")]
-pub mod battery;
-pub mod push_button;
 #[cfg(feature = "speaker")]
 pub mod speaker;
-pub mod chip;
 
 #[cfg(esp_idf_esp_https_server_enable)]
 pub mod adoption;
@@ -27,8 +27,8 @@ pub mod adoption;
 mod identity;
 #[cfg(esp_idf_esp_https_server_enable)]
 mod memory;
-mod starts;
 pub mod panics;
+mod starts;
 
 /// The display's SPI device, on a bus which lives as long as the device, so that other devices can share it, e.g. the
 /// SD card slot of the Waveshare ESP32-C6-Touch-LCD-1.47, see sd_card.rs.
@@ -92,8 +92,13 @@ pub fn reset_reason() -> &'static str {
     }
 }
 
-#[cfg(all(feature = "boot-button", not(any(feature = "board-wave-esp32s3-rlcd-42", feature = "board-guition-jc3248w535c"))))]
-compile_error!("The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c.");
+#[cfg(all(
+    feature = "boot-button",
+    not(any(feature = "board-wave-esp32s3-rlcd-42", feature = "board-guition-jc3248w535c"))
+))]
+compile_error!(
+    "The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c."
+);
 #[cfg(all(feature = "key-button", not(feature = "board-wave-esp32s3-rlcd-42")))]
 compile_error!("The key-button feature is for a board with a KEY button: board-wave-esp32s3-rlcd-42.");
 

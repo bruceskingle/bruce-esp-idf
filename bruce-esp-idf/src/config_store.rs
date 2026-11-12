@@ -1,16 +1,14 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use croner::Cron;
-use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
-use log::info;
 use bruce_embedded_std::{
-    config::{
-        ConfigSpecValue, ConfigStore, ConfigStoreFactory, EnabledState, TypedValue, format_rgb8,
-    },
+    config::{ConfigSpecValue, ConfigStore, ConfigStoreFactory, EnabledState, TypedValue, format_rgb8},
     problem::ProblemManager,
     tz::{TIMEZONE_LEN, TimeZone},
 };
+use croner::Cron;
+use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
+use log::info;
 
 use crate::core::CORE_FEATURE_NAME;
 
@@ -58,15 +56,11 @@ impl ConfigStoreFactory for EspConfigStoreFactory {
                 }
             }
         }
-        let feature_namespace =
-            EspNvs::new(self.nvs_partition.clone(), FEATURE_NAMESPACE_NAME, true)?;
+        let feature_namespace = EspNvs::new(self.nvs_partition.clone(), FEATURE_NAMESPACE_NAME, true)?;
         let nvs_namespace = EspNvs::new(self.nvs_partition.clone(), &feature_name, true)?;
 
         {
-            info!(
-                "Iterating over feature {} NVS items for debugging:",
-                &feature_name
-            );
+            info!("Iterating over feature {} NVS items for debugging:", &feature_name);
             let mut keys = nvs_namespace.keys(None).unwrap();
 
             loop {
@@ -105,10 +99,9 @@ impl EspConfigStore {
         match result {
             Ok(opt_str) => {
                 if opt_str.is_none() && config_value.required {
-                    config_value.problem_id = self.problem_manager.set(
-                        config_value.problem_id,
-                        format!("Required value {} is missing", name),
-                    );
+                    config_value.problem_id = self
+                        .problem_manager
+                        .set(config_value.problem_id, format!("Required value {} is missing", name));
                 } else {
                     self.problem_manager.clear(config_value.problem_id);
                 }
@@ -157,42 +150,34 @@ impl ConfigStore for EspConfigStore {
                 let len = *len_ref; // copying to avoid borrow issues
                 let mut buf = vec![0u8; (len as usize) + 1];
 
-                if let Some(str) = self.unwrap_and_log_esp(
-                    name,
-                    config_value,
-                    self.nvs_namespace.get_str(name, buf.as_mut_slice()),
-                ) {
+                if let Some(str) =
+                    self.unwrap_and_log_esp(name, config_value, self.nvs_namespace.get_str(name, buf.as_mut_slice()))
+                {
                     TypedValue::String(len, Some(str.to_string()))
                 } else {
                     TypedValue::String(len, None)
                 }
             }
-            TypedValue::Int32(_) => TypedValue::Int32(self.unwrap_and_log_esp(
-                name,
-                config_value,
-                self.nvs_namespace.get_i32(name),
-            )),
-            TypedValue::Int64(_) => TypedValue::Int64(self.unwrap_and_log_esp(
-                name,
-                config_value,
-                self.nvs_namespace.get_i64(name),
-            )),
+            TypedValue::Int32(_) => {
+                TypedValue::Int32(self.unwrap_and_log_esp(name, config_value, self.nvs_namespace.get_i32(name)))
+            }
+            TypedValue::Int64(_) => {
+                TypedValue::Int64(self.unwrap_and_log_esp(name, config_value, self.nvs_namespace.get_i64(name)))
+            }
             TypedValue::Bool(_) => {
-                let v = if let Some(value) =
-                    self.unwrap_and_log_esp(name, config_value, self.nvs_namespace.get_u8(name))
-                {
-                    Some(value != 0)
-                } else {
-                    None
-                };
+                let v =
+                    if let Some(value) = self.unwrap_and_log_esp(name, config_value, self.nvs_namespace.get_u8(name)) {
+                        Some(value != 0)
+                    } else {
+                        None
+                    };
                 TypedValue::Bool(v)
             }
             TypedValue::TimeZone(_) => {
                 if let Some(str) = self.unwrap_and_log_esp(
                     name,
                     config_value,
-                    self.nvs_namespace
-                        .get_str(name, &mut [0u8; TIMEZONE_LEN as usize]),
+                    self.nvs_namespace.get_str(name, &mut [0u8; TIMEZONE_LEN as usize]),
                 ) {
                     if let Some(tz) = TimeZone::from_str(str) {
                         TypedValue::TimeZone(Some(tz))
@@ -207,16 +192,10 @@ impl ConfigStore for EspConfigStore {
                 let len = 64;
                 let mut buf = vec![0u8; (len as usize) + 1];
 
-                if let Some(str) = self.unwrap_and_log_esp(
-                    name,
-                    config_value,
-                    self.nvs_namespace.get_str(name, buf.as_mut_slice()),
-                ) {
-                    TypedValue::Cron(self.unwrap_and_log_cron(
-                        name,
-                        config_value,
-                        Cron::from_str(str),
-                    ))
+                if let Some(str) =
+                    self.unwrap_and_log_esp(name, config_value, self.nvs_namespace.get_str(name, buf.as_mut_slice()))
+                {
+                    TypedValue::Cron(self.unwrap_and_log_cron(name, config_value, Cron::from_str(str)))
                 } else {
                     TypedValue::Cron(None)
                 }
@@ -225,11 +204,9 @@ impl ConfigStore for EspConfigStore {
                 let len = 7;
                 let mut buf = vec![0u8; (len as usize) + 1];
 
-                if let Some(str) = self.unwrap_and_log_esp(
-                    name,
-                    config_value,
-                    self.nvs_namespace.get_str(name, buf.as_mut_slice()),
-                ) {
+                if let Some(str) =
+                    self.unwrap_and_log_esp(name, config_value, self.nvs_namespace.get_str(name, buf.as_mut_slice()))
+                {
                     if let Ok(color) = bruce_embedded_std::config::parse_rgb8(str) {
                         TypedValue::Color(Some(color))
                     } else {
@@ -242,18 +219,10 @@ impl ConfigStore for EspConfigStore {
             }
         };
         config_value.value = result;
-        info!(
-            "Finished reading config value {} from NVS: {:?}",
-            name, config_value
-        );
+        info!("Finished reading config value {} from NVS: {:?}", name, config_value);
     }
 
-    fn save(
-        &self,
-        name: &str,
-        config_value: &mut ConfigSpecValue,
-        str_val: &str,
-    ) -> anyhow::Result<()> {
+    fn save(&self, name: &str, config_value: &mut ConfigSpecValue, str_val: &str) -> anyhow::Result<()> {
         // What the log shows of the value, nothing if it is a secret.
         let shown = config_value.redact(str_val);
         log::info!("Config value {} is {}", name, shown);
@@ -281,12 +250,9 @@ impl ConfigStore for EspConfigStore {
                             info!("Saving string value for {} to NVS: {}", name, shown);
                             match self.nvs_namespace.set_str(name, val) {
                                 Ok(_) => info!("Saved OK Config value {} is {}", name, shown),
-                                Err(error) => log::error!(
-                                    "Failed to save Config value {} is {}: {}",
-                                    name,
-                                    shown,
-                                    error
-                                ),
+                                Err(error) => {
+                                    log::error!("Failed to save Config value {} is {}: {}", name, shown, error)
+                                }
                             }
 
                             {
@@ -328,11 +294,7 @@ impl ConfigStore for EspConfigStore {
                             info!("Saving Color value for {} to NVS: {}", name, color_str);
                             self.nvs_namespace.set_str(name, &color_str)?
                         }
-                        _ => anyhow::bail!(
-                            "Invalid config value for {}: {:?}",
-                            name,
-                            config_value
-                        ),
+                        _ => anyhow::bail!("Invalid config value for {}: {:?}", name, config_value),
                     };
                 } else {
                     log::info!("Config value {} unchanged: {:?}", name, config_value);
@@ -349,10 +311,9 @@ impl ConfigStore for EspConfigStore {
         self.nvs_namespace.remove(name)?;
         config_value.value = config_value.value.to_none();
         if config_value.required {
-            config_value.problem_id = self.problem_manager.set(
-                config_value.problem_id,
-                format!("Required value {} removed", name),
-            );
+            config_value.problem_id = self
+                .problem_manager
+                .set(config_value.problem_id, format!("Required value {} removed", name));
         }
         Ok(())
     }
@@ -365,10 +326,7 @@ impl ConfigStore for EspConfigStore {
             );
             value != 0
         } else {
-            info!(
-                "Read feature enabled value for {} from NVS: None",
-                &self.feature_name
-            );
+            info!("Read feature enabled value for {} from NVS: None", &self.feature_name);
             false
         };
 

@@ -3,14 +3,9 @@ use std::{
     time::Duration,
 };
 
-use embedded_graphics::{
-    prelude::{Point, Size},
-    primitives::Rectangle,
-};
-use log::info;
 use bruce_embedded_std::{
-    DisplayOrientation, config::ConfigSpec, feature::FeatureDescriptor, graphics::DisplayManager,
-    listener::Listener, task::scheduler::ScheduledTask,
+    DisplayOrientation, config::ConfigSpec, feature::FeatureDescriptor, graphics::DisplayManager, listener::Listener,
+    task::scheduler::ScheduledTask,
 };
 use bruce_embedded_std::{config::FeatureConfig, platform::PlatformInitializer};
 use bruce_esp_idf::{
@@ -18,6 +13,11 @@ use bruce_esp_idf::{
     features::{analog_clock::AnalogClock, binary_clock::BinaryClock, dyndns2::DynDns2},
     touch::axs5106l::TouchPoint,
 };
+use embedded_graphics::{
+    prelude::{Point, Size},
+    primitives::Rectangle,
+};
+use log::info;
 
 #[derive(FeatureConfig)]
 struct ImuConfig {}
@@ -117,10 +117,7 @@ impl TouchDrawFeature {
 
 impl Feature for TouchDrawFeature {
     type Config = TouchDrawConfig;
-    fn init(
-        &self,
-        _init: &mut bruce_esp_idf::Esp32PlatformInitializer,
-    ) -> anyhow::Result<FeatureDescriptor> {
+    fn init(&self, _init: &mut bruce_esp_idf::Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor> {
         info!("TouchListener::init");
 
         Ok(FeatureDescriptor {

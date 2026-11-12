@@ -41,7 +41,10 @@ impl DeviceIdentity {
         let mut cert_buffer = vec![0u8; PEM_LEN];
         let mut key_buffer = vec![0u8; PEM_LEN];
         let current = nvs.get_u8(FORMAT_KEY)? == Some(FORMAT);
-        let saved = match (nvs.get_str(CERT_KEY, &mut cert_buffer)?, nvs.get_str(KEY_KEY, &mut key_buffer)?) {
+        let saved = match (
+            nvs.get_str(CERT_KEY, &mut cert_buffer)?,
+            nvs.get_str(KEY_KEY, &mut key_buffer)?,
+        ) {
             (Some(cert), Some(key)) if current => Some((cert.to_string(), key.to_string())),
             _ => None,
         };
@@ -61,13 +64,21 @@ impl DeviceIdentity {
         let key_pem: &'static CStr = Box::leak(CString::new(key)?.into_boxed_c_str());
         let fingerprint = fingerprint(cert_pem)?;
         info!("Device {id}, certificate fingerprint {fingerprint}");
-        Ok(DeviceIdentity { id, cert_pem, key_pem, fingerprint })
+        Ok(DeviceIdentity {
+            id,
+            cert_pem,
+            key_pem,
+            fingerprint,
+        })
     }
 }
 
 fn mac_id() -> anyhow::Result<String> {
     let mut mac = [0u8; 6];
-    check(unsafe { esp_read_mac(mac.as_mut_ptr(), esp_mac_type_t_ESP_MAC_WIFI_STA) }, "esp_read_mac")?;
+    check(
+        unsafe { esp_read_mac(mac.as_mut_ptr(), esp_mac_type_t_ESP_MAC_WIFI_STA) },
+        "esp_read_mac",
+    )?;
     Ok(hex(&mac))
 }
 
@@ -114,19 +125,31 @@ fn generate(id: &str) -> anyhow::Result<(String, String)> {
             mbedtls_x509write_crt_set_md_alg(&mut cert, mbedtls_md_type_t_MBEDTLS_MD_SHA256);
             mbedtls_x509write_crt_set_subject_key(&mut cert, &mut key);
             mbedtls_x509write_crt_set_issuer_key(&mut cert, &mut key);
-            check(mbedtls_x509write_crt_set_subject_name(&mut cert, name.as_ptr()), "set_subject_name")?;
-            check(mbedtls_x509write_crt_set_issuer_name(&mut cert, name.as_ptr()), "set_issuer_name")?;
+            check(
+                mbedtls_x509write_crt_set_subject_name(&mut cert, name.as_ptr()),
+                "set_subject_name",
+            )?;
+            check(
+                mbedtls_x509write_crt_set_issuer_name(&mut cert, name.as_ptr()),
+                "set_issuer_name",
+            )?;
             // A random positive serial number.
             let mut serial = [0u8; 16];
             esp_fill_random(serial.as_mut_ptr() as *mut c_void, serial.len());
             serial[0] = (serial[0] & 0x7f) | 0x01;
-            check(mbedtls_x509write_crt_set_serial_raw(&mut cert, serial.as_mut_ptr(), serial.len()), "set_serial")?;
+            check(
+                mbedtls_x509write_crt_set_serial_raw(&mut cert, serial.as_mut_ptr(), serial.len()),
+                "set_serial",
+            )?;
             check(
                 mbedtls_x509write_crt_set_validity(&mut cert, c"20250101000000".as_ptr(), c"20991231235959".as_ptr()),
                 "set_validity",
             )?;
             // Not a CA. Also so that there is an extension, as an empty extensions block is not allowed, see FORMAT.
-            check(mbedtls_x509write_crt_set_basic_constraints(&mut cert, 0, -1), "set_basic_constraints")?;
+            check(
+                mbedtls_x509write_crt_set_basic_constraints(&mut cert, 0, -1),
+                "set_basic_constraints",
+            )?;
 
             let mut buffer = vec![0u8; PEM_LEN];
             check(
@@ -135,7 +158,10 @@ fn generate(id: &str) -> anyhow::Result<(String, String)> {
             )?;
             let cert_pem = CStr::from_ptr(buffer.as_ptr() as *const _).to_str()?.to_string();
             buffer.fill(0);
-            check(mbedtls_pk_write_key_pem(&mut key, buffer.as_mut_ptr(), buffer.len()), "mbedtls_pk_write_key_pem")?;
+            check(
+                mbedtls_pk_write_key_pem(&mut key, buffer.as_mut_ptr(), buffer.len()),
+                "mbedtls_pk_write_key_pem",
+            )?;
             let key_pem = CStr::from_ptr(buffer.as_ptr() as *const _).to_str()?.to_string();
             buffer.fill(0);
             Ok((cert_pem, key_pem))
@@ -153,12 +179,18 @@ fn fingerprint(cert_pem: &CStr) -> anyhow::Result<String> {
         let mut cert: mbedtls_x509_crt = std::mem::zeroed();
         mbedtls_x509_crt_init(&mut cert);
         let bytes = cert_pem.to_bytes_with_nul();
-        let result = check(mbedtls_x509_crt_parse(&mut cert, bytes.as_ptr(), bytes.len()), "mbedtls_x509_crt_parse")
-            .and_then(|_| {
-                let mut hash = [0u8; 32];
-                check(mbedtls_sha256(cert.raw.p, cert.raw.len, hash.as_mut_ptr(), 0), "mbedtls_sha256")?;
-                Ok(hex(&hash))
-            });
+        let result = check(
+            mbedtls_x509_crt_parse(&mut cert, bytes.as_ptr(), bytes.len()),
+            "mbedtls_x509_crt_parse",
+        )
+        .and_then(|_| {
+            let mut hash = [0u8; 32];
+            check(
+                mbedtls_sha256(cert.raw.p, cert.raw.len, hash.as_mut_ptr(), 0),
+                "mbedtls_sha256",
+            )?;
+            Ok(hex(&hash))
+        });
         mbedtls_x509_crt_free(&mut cert);
         result.map_err(|error| anyhow!("the device's certificate cannot be read, {error:#}"))
     }

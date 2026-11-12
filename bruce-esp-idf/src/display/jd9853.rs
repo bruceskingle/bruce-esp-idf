@@ -1,12 +1,7 @@
 use embedded_hal::delay::DelayNs;
 use mipidsi::interface::Interface;
 
-
-
-pub fn jd9853_init<DI, DELAY>(
-    di: &mut DI,
-    delay: &mut DELAY,
-) -> Result<(), DI::Error>
+pub fn jd9853_init<DI, DELAY>(di: &mut DI, delay: &mut DELAY) -> Result<(), DI::Error>
 where
     DI: Interface,
     DELAY: DelayNs,
@@ -39,10 +34,8 @@ where
     cmd(
         0xC8,
         &[
-            0x3F, 0x32, 0x29, 0x29, 0x27, 0x2B, 0x27, 0x28,
-            0x28, 0x26, 0x25, 0x17, 0x12, 0x0D, 0x04, 0x00,
-            0x3F, 0x32, 0x29, 0x29, 0x27, 0x2B, 0x27, 0x28,
-            0x28, 0x26, 0x25, 0x17, 0x12, 0x0D, 0x04, 0x00,
+            0x3F, 0x32, 0x29, 0x29, 0x27, 0x2B, 0x27, 0x28, 0x28, 0x26, 0x25, 0x17, 0x12, 0x0D, 0x04, 0x00, 0x3F, 0x32,
+            0x29, 0x29, 0x27, 0x2B, 0x27, 0x28, 0x28, 0x26, 0x25, 0x17, 0x12, 0x0D, 0x04, 0x00,
         ],
     )?;
 
@@ -68,8 +61,8 @@ where
     cmd(0x3A, &[0x05])?;
 
     // Column/row range (includes 34px X offset)
-    // cmd(0x2A, &[0x00, 0x22, 0x00, 0xCD])?;       // 👉 Remove that from init Because mipidsi will: dynamically set CASET/RASET for every draw 
-                                                    // If you leave it: you’ll get clipping / weird rendering
+    // cmd(0x2A, &[0x00, 0x22, 0x00, 0xCD])?;       // 👉 Remove that from init Because mipidsi will: dynamically set CASET/RASET for every draw
+    // If you leave it: you’ll get clipping / weird rendering
     cmd(0x2B, &[0x00, 0x00, 0x01, 0x3F])?;
 
     cmd(0x29, &[])?; // Display ON
@@ -78,7 +71,7 @@ where
 }
 
 use embedded_graphics::pixelcolor::Rgb565;
-use mipidsi::{Builder};
+use mipidsi::Builder;
 use mipidsi::options::Orientation;
 
 // pub fn create_display<'a, DI, DELAY>(

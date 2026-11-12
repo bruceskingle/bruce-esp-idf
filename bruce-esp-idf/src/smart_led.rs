@@ -88,11 +88,7 @@ pub struct SmartLedsRmt<'a> {
 }
 
 impl<'a> SmartLedsRmt<'a> {
-    pub fn new<C: RmtChannel + 'a>(
-        channel: C,
-        pin: impl OutputPin + 'a,
-        num_leds: usize,
-    ) -> anyhow::Result<Self> {
+    pub fn new<C: RmtChannel + 'a>(channel: C, pin: impl OutputPin + 'a, num_leds: usize) -> anyhow::Result<Self> {
         let config = TransmitConfig::new()
             .clock_divider(8)
             .carrier(None)
@@ -155,11 +151,7 @@ impl<'a> SmartLedsRmt<'a> {
         for (i, &byte) in [pixel.g, pixel.r, pixel.b].iter().enumerate() {
             for bit in 0..8 {
                 let bit_is_set = (byte >> (7 - bit)) & 1 == 1;
-                signal[i * 8 + bit] = if bit_is_set {
-                    self.one_signal
-                } else {
-                    self.zero_signal
-                };
+                signal[i * 8 + bit] = if bit_is_set { self.one_signal } else { self.zero_signal };
             }
         }
         signal

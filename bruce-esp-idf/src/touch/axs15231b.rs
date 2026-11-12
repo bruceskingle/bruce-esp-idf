@@ -7,9 +7,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use bruce_embedded_std::listener::{Listener, ListenerManager};
 use esp_idf_hal::delay::BLOCK;
 use esp_idf_hal::i2c::I2cDriver;
-use bruce_embedded_std::listener::{Listener, ListenerManager};
 
 use super::TouchPoint;
 
@@ -34,26 +34,29 @@ impl TouchDriver {
     pub fn start(mut i2c: I2cDriver<'static>) -> anyhow::Result<TouchDriver> {
         let listener_manager = Arc::new(ListenerManager::new());
         let listeners = listener_manager.clone();
-        std::thread::Builder::new().name("touch".into()).stack_size(4096).spawn(move || {
-            // Only the first failure is logged, as one which lasts would fill the log.
-            let mut failing = false;
-            loop {
-                std::thread::sleep(POLL_INTERVAL);
-                match read(&mut i2c) {
-                    Ok(Some(point)) => {
-                        failing = false;
-                        listeners.emit(&point);
-                    }
-                    Ok(None) => failing = false,
-                    Err(error) => {
-                        if !failing {
-                            log::warn!("Unable to read the touch screen, {error:#}");
+        std::thread::Builder::new()
+            .name("touch".into())
+            .stack_size(4096)
+            .spawn(move || {
+                // Only the first failure is logged, as one which lasts would fill the log.
+                let mut failing = false;
+                loop {
+                    std::thread::sleep(POLL_INTERVAL);
+                    match read(&mut i2c) {
+                        Ok(Some(point)) => {
+                            failing = false;
+                            listeners.emit(&point);
                         }
-                        failing = true;
+                        Ok(None) => failing = false,
+                        Err(error) => {
+                            if !failing {
+                                log::warn!("Unable to read the touch screen, {error:#}");
+                            }
+                            failing = true;
+                        }
                     }
                 }
-            }
-        })?;
+            })?;
         Ok(TouchDriver { listener_manager })
     }
 
@@ -79,5 +82,8 @@ fn read(i2c: &mut I2cDriver<'static>) -> anyhow::Result<Option<TouchPoint>> {
         return Ok(None);
     }
     // As the display turns the frame onto the panel, see its fill_strip, the other way.
-    Ok(Some(TouchPoint { x: panel_y, y: PANEL_WIDTH - 1 - panel_x }))
+    Ok(Some(TouchPoint {
+        x: panel_y,
+        y: PANEL_WIDTH - 1 - panel_x,
+    }))
 }

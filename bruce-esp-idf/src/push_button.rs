@@ -33,22 +33,25 @@ impl PushButton {
         let button = PinDriver::input(pin, Pull::Up)?;
         let action: Arc<Mutex<Option<Action>>> = Arc::new(Mutex::new(None));
         let pressed_action = action.clone();
-        std::thread::Builder::new().name(format!("{name} button")).stack_size(4096).spawn(move || {
-            let mut was_pressed = false;
-            loop {
-                std::thread::sleep(POLL);
-                let pressed = button.is_low();
-                if pressed && !was_pressed {
-                    info!("{name} pressed");
-                    if let Some(action) = pressed_action.lock().unwrap().as_mut() {
-                        if let Err(error) = action() {
-                            log::warn!("The action of {name} failed, {error:#}");
+        std::thread::Builder::new()
+            .name(format!("{name} button"))
+            .stack_size(4096)
+            .spawn(move || {
+                let mut was_pressed = false;
+                loop {
+                    std::thread::sleep(POLL);
+                    let pressed = button.is_low();
+                    if pressed && !was_pressed {
+                        info!("{name} pressed");
+                        if let Some(action) = pressed_action.lock().unwrap().as_mut() {
+                            if let Err(error) = action() {
+                                log::warn!("The action of {name} failed, {error:#}");
+                            }
                         }
                     }
+                    was_pressed = pressed;
                 }
-                was_pressed = pressed;
-            }
-        })?;
+            })?;
         Ok(PushButton { name, action })
     }
 

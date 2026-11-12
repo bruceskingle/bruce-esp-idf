@@ -64,7 +64,9 @@ fn this_start(firmware: Firmware) -> Value {
 
 /// The log, its JSON lines, oldest first, or none if nothing has been logged yet.
 fn read_log(nvs: &EspNvs<NvsDefault>) -> anyhow::Result<Vec<u8>> {
-    let Some(length) = nvs.blob_len(LOG_KEY)? else { return Ok(Vec::new()) };
+    let Some(length) = nvs.blob_len(LOG_KEY)? else {
+        return Ok(Vec::new());
+    };
     let mut log = vec![0u8; length];
     let read = nvs.get_blob(LOG_KEY, &mut log)?.map_or(0, |read| read.len());
     log.truncate(read);
@@ -73,7 +75,8 @@ fn read_log(nvs: &EspNvs<NvsDefault>) -> anyhow::Result<Vec<u8>> {
 
 /// The log's lines, leaving out any which are not JSON.
 fn lines(log: &[u8]) -> impl Iterator<Item = &[u8]> {
-    log.split(|byte| *byte == b'\n').filter(|line| serde_json::from_slice::<&RawValue>(line).is_ok())
+    log.split(|byte| *byte == b'\n')
+        .filter(|line| serde_json::from_slice::<&RawValue>(line).is_ok())
 }
 
 /// Logs this start in NVS, keeping the latest MAX_STARTS, which must be done once the time is known, and before
@@ -105,9 +108,18 @@ pub fn write_json(
     firmware: Firmware,
     write: &mut dyn FnMut(&[u8]) -> anyhow::Result<()>,
 ) -> anyhow::Result<()> {
-    let log = EspNvs::new(nvs_partition.clone(), NAMESPACE, false).map_err(anyhow::Error::from).and_then(|nvs| read_log(&nvs));
+    let log = EspNvs::new(nvs_partition.clone(), NAMESPACE, false)
+        .map_err(anyhow::Error::from)
+        .and_then(|nvs| read_log(&nvs));
     let problem = log.as_ref().err().map(|error| format!("{error:#}"));
-    write(format!(r#"{{"count":{},"problem":{},"starts":["#, json!(COUNT.get()), json!(problem)).as_bytes())?;
+    write(
+        format!(
+            r#"{{"count":{},"problem":{},"starts":["#,
+            json!(COUNT.get()),
+            json!(problem)
+        )
+        .as_bytes(),
+    )?;
     match &log {
         Ok(log) => {
             for (index, line) in lines(log).enumerate() {

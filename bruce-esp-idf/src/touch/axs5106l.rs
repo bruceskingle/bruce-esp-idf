@@ -1,9 +1,9 @@
-use esp_idf_hal::delay::{BLOCK, FreeRtos};
-use esp_idf_hal::gpio::{InputPin, OutputPin, InterruptType, PinDriver, Pull};
-use esp_idf_hal::i2c::I2cDriver;
-use esp_idf_hal::task::notification::Notification;
 use bruce_embedded_std::DisplayOrientation;
 use bruce_embedded_std::listener::{Listener, ListenerManager};
+use esp_idf_hal::delay::{BLOCK, FreeRtos};
+use esp_idf_hal::gpio::{InputPin, InterruptType, OutputPin, PinDriver, Pull};
+use esp_idf_hal::i2c::I2cDriver;
+use esp_idf_hal::task::notification::Notification;
 use std::num::NonZeroU32;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -21,13 +21,8 @@ pub struct TouchDriverFactory {
 }
 
 impl TouchDriverFactory {
-    pub fn build(
-        self,
-        width: u16,
-        height: u16,
-        rotation: DisplayOrientation,
-    ) -> anyhow::Result<TouchDriver> {
-        Ok(TouchDriver{
+    pub fn build(self, width: u16, height: u16, rotation: DisplayOrientation) -> anyhow::Result<TouchDriver> {
+        Ok(TouchDriver {
             int_pin: self.int_pin,
             rst_pin: self.rst_pin,
             i2c: self.i2c,
@@ -62,7 +57,7 @@ impl TouchDriver {
         })
     }
 
-    pub fn init(&mut self)  -> anyhow::Result<()> {
+    pub fn init(&mut self) -> anyhow::Result<()> {
         self.rst_pin.set_low()?;
         std::thread::sleep(Duration::from_millis(200));
         self.rst_pin.set_high()?;
@@ -87,7 +82,7 @@ impl TouchDriver {
 
         for i in 0..num_touches {
             let base = 2 + i * 6;
-            let x = ((buf[base]     as u16 & 0x0f) << 8) | buf[base + 1] as u16;
+            let x = ((buf[base] as u16 & 0x0f) << 8) | buf[base + 1] as u16;
             let y = ((buf[base + 2] as u16 & 0x0f) << 8) | buf[base + 3] as u16;
             points.push(TouchPoint { x, y });
         }
@@ -95,25 +90,22 @@ impl TouchDriver {
         Ok(Some(TouchData { points }))
     }
 
-    pub fn apply_rotation(point: &TouchPoint, rotation: DisplayOrientation, 
-                       width: u16, height: u16) -> TouchPoint {
+    pub fn apply_rotation(point: &TouchPoint, rotation: DisplayOrientation, width: u16, height: u16) -> TouchPoint {
         match rotation {
-            DisplayOrientation::Rotate0 => TouchPoint { // rotation 0 (default)
-                x: width - 1 - point.x, 
-                y: point.y 
+            DisplayOrientation::Rotate0 => TouchPoint {
+                // rotation 0 (default)
+                x: width - 1 - point.x,
+                y: point.y,
             },
-            DisplayOrientation::Rotate90 => TouchPoint { 
-                x: point.y,
-                y: point.x, 
-            },
-            DisplayOrientation::Rotate180 => TouchPoint { 
-                x: point.x, 
-                y: height - 1 - point.y 
+            DisplayOrientation::Rotate90 => TouchPoint { x: point.y, y: point.x },
+            DisplayOrientation::Rotate180 => TouchPoint {
+                x: point.x,
+                y: height - 1 - point.y,
             },
 
             DisplayOrientation::Rotate270 => TouchPoint {
                 x: height - 1 - point.y,
-                y: width - 1 - point.x
+                y: width - 1 - point.x,
             },
         }
     }
@@ -127,15 +119,16 @@ impl TouchDriver {
     }
 
     pub fn start_touch_task(&mut self) -> anyhow::Result<()> {
-
         let i2c_mutex = self.i2c.clone();
         let int_pin_mutex = self.int_pin.clone();
         let rotation = self.rotation;
         let width = self.width;
         let height = self.height;
 
-        int_pin_mutex.lock().unwrap().set_interrupt_type(InterruptType::NegEdge)?;
-
+        int_pin_mutex
+            .lock()
+            .unwrap()
+            .set_interrupt_type(InterruptType::NegEdge)?;
 
         // Verify chip is responding after reset
         {
@@ -161,9 +154,11 @@ impl TouchDriver {
                 let mut int_pin = int_pin_mutex.lock().unwrap();
 
                 unsafe {
-                    int_pin.subscribe(move || {
-                        notifier.notify(NonZeroU32::new(1).unwrap());
-                    }).unwrap();
+                    int_pin
+                        .subscribe(move || {
+                            notifier.notify(NonZeroU32::new(1).unwrap());
+                        })
+                        .unwrap();
                 }
                 int_pin.enable_interrupt().unwrap();
 
@@ -175,7 +170,7 @@ impl TouchDriver {
                 loop {
                     notification.wait(esp_idf_hal::delay::BLOCK);
 
-                    FreeRtos::delay_ms(10);  // give chip time to prepare data
+                    FreeRtos::delay_ms(10); // give chip time to prepare data
 
                     int_pin.enable_interrupt().ok();
 
@@ -198,11 +193,11 @@ impl TouchDriver {
                                 }
 
                                 let rotated = Self::apply_rotation(point, rotation, width, height);
-                                // log::info!("Rotated x={} y={} Touch x={} y={} Bounds {} {} {} {}", 
+                                // log::info!("Rotated x={} y={} Touch x={} y={} Bounds {} {} {} {}",
                                 //     rotated.x, rotated.y,
                                 //     point.x, point.y,
                                 //     min_x, max_x, min_y, max_y);
-                                
+
                                 listener_manager.emit(&rotated);
                             }
                         }

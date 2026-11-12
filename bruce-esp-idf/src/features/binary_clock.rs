@@ -4,16 +4,16 @@ use crate::smart_led::SmartLeds;
 use crate::smart_led::SmartLedsRmt;
 use crate::smart_led::SmartLedsSpi;
 use crate::{Feature, FeatureDescriptor};
+use bruce_embedded_std::config::ConfigSpec;
+use bruce_embedded_std::config::FeatureConfig;
+use bruce_embedded_std::platform::PlatformInitializer;
+use bruce_embedded_std::task::scheduler::ScheduledTask;
 use chrono::Datelike;
 use chrono::Local;
 use chrono::Timelike;
 use esp_idf_hal::spi::SpiDriver;
 use log::info;
 use rgb::RGB8;
-use bruce_embedded_std::config::ConfigSpec;
-use bruce_embedded_std::config::FeatureConfig;
-use bruce_embedded_std::platform::PlatformInitializer;
-use bruce_embedded_std::task::scheduler::ScheduledTask;
 use std::borrow::Borrow;
 
 const HIGH: u8 = 16;
@@ -181,10 +181,7 @@ where
 impl<T: SmartLeds + 'static> Feature for BinaryClock<T> {
     type Config = BinaryClockConfig;
 
-    fn init(
-        &self,
-        _initializer: &mut crate::Esp32PlatformInitializer,
-    ) -> anyhow::Result<FeatureDescriptor> {
+    fn init(&self, _initializer: &mut crate::Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor> {
         info!("BinaryClock::init()");
 
         Ok(FeatureDescriptor {
@@ -248,8 +245,7 @@ impl<T: SmartLeds> ClockTask<T> {
             let bit = (v >> (bits.len() - 1 - i)) & 1;
 
             // self.pixels[index] = if bit == 0 { off } else { on };
-            self.smart_leds
-                .set_pixel_rgb(index, if bit == 0 { off } else { on })?;
+            self.smart_leds.set_pixel_rgb(index, if bit == 0 { off } else { on })?;
         }
         Ok(())
     }

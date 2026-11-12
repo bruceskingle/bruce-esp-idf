@@ -1,9 +1,9 @@
+use bruce_embedded_std::graphics::{Color, DisplayManager};
 use embedded_graphics::{prelude::*, primitives::PrimitiveStyle};
 use esp_idf_hal::{
     gpio::{Output, PinDriver},
     spi::SpiDeviceDriver,
 };
-use bruce_embedded_std::graphics::{Color, DisplayManager};
 
 #[cfg(feature = "board-cyd-esp32-28")]
 use crate::display::mipi_dsi_display_manager;
@@ -39,17 +39,13 @@ impl mipidsi::interface::Interface for EspDi {
 
                         let (start, end) = if self.xoffset >= 0 {
                             (
-                                u16::from_be_bytes([buf[0], buf[1]])
-                                    .saturating_add(self.xoffset as u16),
-                                u16::from_be_bytes([buf[2], buf[3]])
-                                    .saturating_add(self.xoffset as u16),
+                                u16::from_be_bytes([buf[0], buf[1]]).saturating_add(self.xoffset as u16),
+                                u16::from_be_bytes([buf[2], buf[3]]).saturating_add(self.xoffset as u16),
                             )
                         } else {
                             (
-                                u16::from_be_bytes([buf[0], buf[1]])
-                                    .saturating_sub(-self.xoffset as u16),
-                                u16::from_be_bytes([buf[2], buf[3]])
-                                    .saturating_sub(-self.xoffset as u16),
+                                u16::from_be_bytes([buf[0], buf[1]]).saturating_sub(-self.xoffset as u16),
+                                u16::from_be_bytes([buf[2], buf[3]]).saturating_sub(-self.xoffset as u16),
                             )
                         };
 
@@ -69,17 +65,13 @@ impl mipidsi::interface::Interface for EspDi {
 
                         let (start, end) = if self.yoffset >= 0 {
                             (
-                                u16::from_be_bytes([buf[0], buf[1]])
-                                    .saturating_add(self.yoffset as u16),
-                                u16::from_be_bytes([buf[2], buf[3]])
-                                    .saturating_add(self.yoffset as u16),
+                                u16::from_be_bytes([buf[0], buf[1]]).saturating_add(self.yoffset as u16),
+                                u16::from_be_bytes([buf[2], buf[3]]).saturating_add(self.yoffset as u16),
                             )
                         } else {
                             (
-                                u16::from_be_bytes([buf[0], buf[1]])
-                                    .saturating_sub(-self.yoffset as u16),
-                                u16::from_be_bytes([buf[2], buf[3]])
-                                    .saturating_sub(-self.yoffset as u16),
+                                u16::from_be_bytes([buf[0], buf[1]]).saturating_sub(-self.yoffset as u16),
+                                u16::from_be_bytes([buf[2], buf[3]]).saturating_sub(-self.yoffset as u16),
                             )
                         };
 
@@ -98,10 +90,7 @@ impl mipidsi::interface::Interface for EspDi {
         Ok(())
     }
 
-    fn send_pixels<const N: usize>(
-        &mut self,
-        pixels: impl IntoIterator<Item = [u8; N]>,
-    ) -> Result<(), Self::Error> {
+    fn send_pixels<const N: usize>(&mut self, pixels: impl IntoIterator<Item = [u8; N]>) -> Result<(), Self::Error> {
         self.dc.set_high().ok();
 
         for chunk in pixels {
@@ -111,11 +100,7 @@ impl mipidsi::interface::Interface for EspDi {
         Ok(())
     }
 
-    fn send_repeated_pixel<const N: usize>(
-        &mut self,
-        pixel: [u8; N],
-        mut count: u32,
-    ) -> Result<(), Self::Error> {
+    fn send_repeated_pixel<const N: usize>(&mut self, pixel: [u8; N], mut count: u32) -> Result<(), Self::Error> {
         self.dc.set_high().ok();
 
         let mut buf = [0u8; 64];
@@ -148,17 +133,9 @@ pub struct MipiDsiDisplayManager {
     pub display: mipidsi::Display<EspDi, mipidsi::models::ILI9341Rgb565, mipidsi::NoResetPin>,
     #[cfg(feature = "board-wave-esp32c6-touch-147")]
     // pub display: mipidsi::Display<crate::display_mipidsi::EspDi, mipidsi::models::ILI9341Rgb565, PinDriver<'static, esp_idf_hal::gpio::Output>>,
-    pub display: mipidsi::Display<
-        EspDi,
-        mipidsi::models::ST7789,
-        PinDriver<'static, esp_idf_hal::gpio::Output>,
-    >,
+    pub display: mipidsi::Display<EspDi, mipidsi::models::ST7789, PinDriver<'static, esp_idf_hal::gpio::Output>>,
     #[cfg(feature = "board-wave-esp32c6-lcd-147")]
-    pub display: mipidsi::Display<
-        EspDi,
-        mipidsi::models::ST7789,
-        PinDriver<'static, esp_idf_hal::gpio::Output>,
-    >,
+    pub display: mipidsi::Display<EspDi, mipidsi::models::ST7789, PinDriver<'static, esp_idf_hal::gpio::Output>>,
 }
 
 impl MipiDsiDisplayManager {}
@@ -168,17 +145,9 @@ impl DisplayManager for MipiDsiDisplayManager {
     type Display = mipidsi::Display<EspDi, mipidsi::models::ILI9341Rgb565, mipidsi::NoResetPin>;
     #[cfg(feature = "board-wave-esp32c6-touch-147")]
     // type Display = mipidsi::Display<crate::display_mipidsi::EspDi, mipidsi::models::ILI9341Rgb565, PinDriver<'static, esp_idf_hal::gpio::Output>>;
-    type Display = mipidsi::Display<
-        EspDi,
-        mipidsi::models::ST7789,
-        PinDriver<'static, esp_idf_hal::gpio::Output>,
-    >;
+    type Display = mipidsi::Display<EspDi, mipidsi::models::ST7789, PinDriver<'static, esp_idf_hal::gpio::Output>>;
     #[cfg(feature = "board-wave-esp32c6-lcd-147")]
-    type Display = mipidsi::Display<
-        EspDi,
-        mipidsi::models::ST7789,
-        PinDriver<'static, esp_idf_hal::gpio::Output>,
-    >;
+    type Display = mipidsi::Display<EspDi, mipidsi::models::ST7789, PinDriver<'static, esp_idf_hal::gpio::Output>>;
 
     fn display(&mut self) -> &mut Self::Display {
         &mut self.display

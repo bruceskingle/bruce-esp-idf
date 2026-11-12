@@ -1,6 +1,6 @@
 use bruce_esp_idf::{
-    features::{binary_clock::BinaryClock, dyndns2::DynDns2},
     Esp32Platform,
+    features::{binary_clock::BinaryClock, dyndns2::DynDns2},
 };
 
 fn main() -> anyhow::Result<()> {

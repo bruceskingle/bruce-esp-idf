@@ -21,10 +21,18 @@ impl Feature for ScreenSettings {
     type Config = ScreenConfig;
 
     fn init(&self, _initializer: &mut Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor> {
-        Ok(FeatureDescriptor { name: "Screen".to_string(), config: ScreenConfig::to_config_spec()? })
+        Ok(FeatureDescriptor {
+            name: "Screen".to_string(),
+            config: ScreenConfig::to_config_spec()?,
+        })
     }
 
-    fn start(&mut self, _sparko: &mut Esp32Platform, _initializer: &mut Esp32PlatformInitializer, _config: ScreenConfig) -> anyhow::Result<()> {
+    fn start(
+        &mut self,
+        _sparko: &mut Esp32Platform,
+        _initializer: &mut Esp32PlatformInitializer,
+        _config: ScreenConfig,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 }

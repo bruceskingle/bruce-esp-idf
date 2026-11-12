@@ -1,8 +1,6 @@
 use std::net::Ipv4Addr;
 use std::sync::mpsc::Receiver;
 
-use chrono::Local;
-use log::info;
 use bruce_embedded_std::config::FeatureConfig;
 use bruce_embedded_std::{
     config::{ConfigSpec, ConfigSpecValue, TypedValue},
@@ -10,12 +8,14 @@ use bruce_embedded_std::{
     task::scheduler::ScheduledTask,
     tz::TimeZone,
 };
+use chrono::Local;
+use log::info;
 
-use bruce_embedded_std::mdns::MdnsResponder;
 use crate::{
     Feature,
     esp32_platform::{Esp32Platform, Esp32PlatformInitializer},
 };
+use bruce_embedded_std::mdns::MdnsResponder;
 use bruce_embedded_std::platform::PlatformInitializer;
 
 pub const CORE_FEATURE_NAME: &str = "core";
@@ -64,10 +64,7 @@ impl Core {
 impl Feature for Core {
     type Config = CoreConfig;
 
-    fn init(
-        &self,
-        _init: &mut crate::Esp32PlatformInitializer,
-    ) -> anyhow::Result<FeatureDescriptor> {
+    fn init(&self, _init: &mut crate::Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor> {
         Ok(FeatureDescriptor {
             name: CORE_FEATURE_NAME.to_string(),
             config: CoreConfig::to_config_spec()?,

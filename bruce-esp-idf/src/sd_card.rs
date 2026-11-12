@@ -30,7 +30,13 @@ pub fn mount(
     miso: esp_idf_hal::gpio::Gpio19<'static>,
     cs: esp_idf_hal::gpio::Gpio5<'static>,
 ) -> anyhow::Result<Box<dyn Any>> {
-    let spi_driver = SpiDriver::new(spi, sclk, mosi, Some(miso), &SpiDriverConfig::default().dma(Dma::Auto(4096)))?;
+    let spi_driver = SpiDriver::new(
+        spi,
+        sclk,
+        mosi,
+        Some(miso),
+        &SpiDriverConfig::default().dma(Dma::Auto(4096)),
+    )?;
     // SD cards need pull-ups on their lines in SPI mode, which the CYD does not have, so the ESP32's own, as ESP-IDF's
     // examples do. Without them the card answers some commands and not others.
     for pin in [5, 18, 19, 23] {
@@ -39,7 +45,14 @@ pub fn mount(
     let mut config = SdCardConfiguration::new();
     config.speed_khz = SPEED_KHZ;
     let card = SdCardDriver::new_spi(
-        SdSpiHostDriver::new(spi_driver, Some(cs), AnyIOPin::none(), AnyIOPin::none(), AnyIOPin::none(), None)?,
+        SdSpiHostDriver::new(
+            spi_driver,
+            Some(cs),
+            AnyIOPin::none(),
+            AnyIOPin::none(),
+            AnyIOPin::none(),
+            None,
+        )?,
         &config,
     )?;
     let mounted = MountedFatfs::mount(Fatfs::new_sdcard(0, card)?, MOUNT_POINT, MAX_OPEN_FILES)?;
@@ -63,7 +76,14 @@ pub fn mount_shared(
     let mut config = SdCardConfiguration::new();
     config.speed_khz = SPEED_KHZ;
     let card = SdCardDriver::new_spi(
-        SdSpiHostDriver::new(bus, Some(cs), AnyIOPin::none(), AnyIOPin::none(), AnyIOPin::none(), None)?,
+        SdSpiHostDriver::new(
+            bus,
+            Some(cs),
+            AnyIOPin::none(),
+            AnyIOPin::none(),
+            AnyIOPin::none(),
+            None,
+        )?,
         &config,
     )?;
     let mounted = MountedFatfs::mount(Fatfs::new_sdcard(0, card)?, MOUNT_POINT, MAX_OPEN_FILES)?;
@@ -81,7 +101,13 @@ pub fn mount_spi3(
     miso: esp_idf_hal::gpio::Gpio13<'static>,
     cs: esp_idf_hal::gpio::Gpio10<'static>,
 ) -> anyhow::Result<Box<dyn Any>> {
-    let spi_driver = SpiDriver::new(spi, sclk, mosi, Some(miso), &SpiDriverConfig::default().dma(Dma::Auto(4096)))?;
+    let spi_driver = SpiDriver::new(
+        spi,
+        sclk,
+        mosi,
+        Some(miso),
+        &SpiDriverConfig::default().dma(Dma::Auto(4096)),
+    )?;
     // As on the CYD, see mount, the ESP32's own pull-ups, in case the board has none.
     for pin in [10, 11, 12, 13] {
         unsafe { esp_idf_sys::gpio_set_pull_mode(pin, esp_idf_sys::gpio_pull_mode_t_GPIO_PULLUP_ONLY) };
@@ -89,7 +115,14 @@ pub fn mount_spi3(
     let mut config = SdCardConfiguration::new();
     config.speed_khz = SPEED_KHZ;
     let card = SdCardDriver::new_spi(
-        SdSpiHostDriver::new(spi_driver, Some(cs), AnyIOPin::none(), AnyIOPin::none(), AnyIOPin::none(), None)?,
+        SdSpiHostDriver::new(
+            spi_driver,
+            Some(cs),
+            AnyIOPin::none(),
+            AnyIOPin::none(),
+            AnyIOPin::none(),
+            None,
+        )?,
         &config,
     )?;
     let mounted = MountedFatfs::mount(Fatfs::new_sdcard(0, card)?, MOUNT_POINT, MAX_OPEN_FILES)?;
@@ -109,7 +142,15 @@ pub fn mount_mmc(
 ) -> anyhow::Result<Box<dyn Any>> {
     use esp_idf_hal::sd::mmc::{SdMmcHostConfiguration, SdMmcHostDriver};
     // The slot has no card detect or write protect lines. The ESP32's own pull-ups, as the board has none.
-    let host = SdMmcHostDriver::new_1bit(slot, cmd, clk, d0, AnyIOPin::none(), AnyIOPin::none(), &SdMmcHostConfiguration::new())?;
+    let host = SdMmcHostDriver::new_1bit(
+        slot,
+        cmd,
+        clk,
+        d0,
+        AnyIOPin::none(),
+        AnyIOPin::none(),
+        &SdMmcHostConfiguration::new(),
+    )?;
     let card = SdCardDriver::new_mmc(host, &SdCardConfiguration::new())?;
     let mounted = MountedFatfs::mount(Fatfs::new_sdcard(0, card)?, MOUNT_POINT, MAX_OPEN_FILES)?;
     info!("SD card mounted at {MOUNT_POINT}");

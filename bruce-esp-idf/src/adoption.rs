@@ -19,9 +19,9 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail};
+use bruce_embedded_std::config_manager::ConfigManager;
 use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use log::{info, warn};
-use bruce_embedded_std::config_manager::ConfigManager;
 
 use crate::identity::DEVICE_NAMESPACE;
 
@@ -59,13 +59,27 @@ pub struct Adoption {
 }
 
 impl Adoption {
-    pub fn load(nvs_partition: &EspNvsPartition<NvsDefault>, config_manager: Arc<ConfigManager>) -> anyhow::Result<Arc<Adoption>> {
+    pub fn load(
+        nvs_partition: &EspNvsPartition<NvsDefault>,
+        config_manager: Arc<ConfigManager>,
+    ) -> anyhow::Result<Arc<Adoption>> {
         let nvs = EspNvs::new(nvs_partition.clone(), DEVICE_NAMESPACE, true)?;
         let mut buffer = [0u8; 80];
         let key = nvs.get_str(KEY_KEY, &mut buffer)?.map(String::from);
-        info!("The device is {}", if key.is_some() { "adopted" } else { "not adopted" });
+        info!(
+            "The device is {}",
+            if key.is_some() { "adopted" } else { "not adopted" }
+        );
         config_manager.set_managed(key.is_some());
-        Ok(Arc::new(Adoption { nvs: Mutex::new(nvs), state: Mutex::new(State { key, pairing: None, notice: None }), config_manager }))
+        Ok(Arc::new(Adoption {
+            nvs: Mutex::new(nvs),
+            state: Mutex::new(State {
+                key,
+                pairing: None,
+                notice: None,
+            }),
+            config_manager,
+        }))
     }
 
     pub fn is_adopted(&self) -> bool {
@@ -79,7 +93,9 @@ impl Adoption {
         let Some(key) = &state.key else {
             return true;
         };
-        let given = authorization.and_then(|header| header.strip_prefix("Bearer ")).unwrap_or_default();
+        let given = authorization
+            .and_then(|header| header.strip_prefix("Bearer "))
+            .unwrap_or_default();
         // In constant time, so that the time taken does not tell how much of it was right.
         given.len() == key.len() && given.bytes().zip(key.bytes()).fold(0u8, |diff, (a, b)| diff | (a ^ b)) == 0
     }
@@ -97,8 +113,9 @@ impl Adoption {
         let Some(key) = &state.key else {
             return true;
         };
-        let Some((time, signature)) =
-            authorization.and_then(|header| header.strip_prefix(SIGNATURE_SCHEME)).and_then(|rest| rest.split_once(':'))
+        let Some((time, signature)) = authorization
+            .and_then(|header| header.strip_prefix(SIGNATURE_SCHEME))
+            .and_then(|rest| rest.split_once(':'))
         else {
             return false;
         };
@@ -106,7 +123,10 @@ impl Adoption {
             return false;
         };
         if (chrono::Utc::now().timestamp() - time).abs() > SIGNATURE_WINDOW {
-            warn!("A signed request's time, {time}, is not the device's, {}", chrono::Utc::now().timestamp());
+            warn!(
+                "A signed request's time, {time}, is not the device's, {}",
+                chrono::Utc::now().timestamp()
+            );
             return false;
         }
         let Ok(mut mac) = hmac::Hmac::<sha2::Sha256>::new_from_slice(&key) else {
@@ -126,7 +146,11 @@ impl Adoption {
         let mut random = [0u8; 4];
         unsafe { esp_idf_sys::esp_fill_random(random.as_mut_ptr() as *mut _, random.len()) };
         let code = format!("{:06}", u32::from_le_bytes(random) % 1_000_000);
-        state.pairing = Some(Pairing { code, expires: Instant::now() + PAIRING_TIME, attempts: 0 });
+        state.pairing = Some(Pairing {
+            code,
+            expires: Instant::now() + PAIRING_TIME,
+            attempts: 0,
+        });
         info!("Pairing started");
         Ok(PAIRING_TIME)
     }
@@ -148,7 +172,10 @@ impl Adoption {
             info!("Pairing timed out");
             state.pairing = None;
         }
-        state.pairing.as_ref().map(|pairing| (pairing.code.clone(), pairing.expires - now))
+        state
+            .pairing
+            .as_ref()
+            .map(|pairing| (pairing.code.clone(), pairing.expires - now))
     }
 
     /// Adopts the device for the app with key, if code is the one being shown.
@@ -199,7 +226,10 @@ impl Adoption {
 
 /// Releases the device when the BOOT button is held down for RELEASE_HOLD, in a thread of its own, so that it works
 /// whatever else the device is doing, in AP mode too.
-pub fn watch_boot_button(adoption: Arc<Adoption>, pin: impl esp_idf_hal::gpio::InputPin + 'static) -> anyhow::Result<()> {
+pub fn watch_boot_button(
+    adoption: Arc<Adoption>,
+    pin: impl esp_idf_hal::gpio::InputPin + 'static,
+) -> anyhow::Result<()> {
     let button = esp_idf_hal::gpio::PinDriver::input(pin, esp_idf_hal::gpio::Pull::Up)?;
     std::thread::Builder::new().stack_size(4096).spawn(move || {
         let mut pressed_since: Option<Instant> = None;
@@ -244,17 +274,22 @@ pub struct AdoptionOverlay<DM: bruce_embedded_std::graphics::DisplayManager> {
 #[cfg(feature = "display")]
 impl<DM: bruce_embedded_std::graphics::DisplayManager> AdoptionOverlay<DM> {
     pub fn new(display_manager: &Arc<Mutex<DM>>, adoption: Arc<Adoption>, fingerprint: &str) -> Self {
-        Self { display_manager: display_manager.clone(), adoption, fingerprint: fingerprint.to_string(), shown: None }
+        Self {
+            display_manager: display_manager.clone(),
+            adoption,
+            fingerprint: fingerprint.to_string(),
+            shown: None,
+        }
     }
 
     /// Draws the whole overlay if all is true, otherwise only the countdown, over a black rectangle, so that the
     /// rest does not flash each second.
     fn draw(&self, code: &str, seconds: u64, all: bool) -> anyhow::Result<()> {
+        use bruce_embedded_std::graphics::{Color, DrawTargetResultExt};
         use embedded_graphics::mono_font::{MonoTextStyle, ascii::FONT_10X20};
         use embedded_graphics::prelude::*;
         use embedded_graphics::primitives::{PrimitiveStyle, Rectangle};
         use embedded_graphics::text::{Alignment, Text};
-        use bruce_embedded_std::graphics::{Color, DrawTargetResultExt};
 
         /// How far below the centre the countdown's baseline is.
         const COUNTDOWN_Y: i32 = 70;
@@ -279,27 +314,37 @@ impl<DM: bruce_embedded_std::graphics::DisplayManager> AdoptionOverlay<DM> {
                 (&format!("Certificate {}", &self.fingerprint[..8]), white, 30),
             ];
             for (text, style, dy) in lines {
-                Text::with_alignment(text, centre + Point::new(0, dy), style, Alignment::Center).draw(display).anyhow()?;
+                Text::with_alignment(text, centre + Point::new(0, dy), style, Alignment::Center)
+                    .draw(display)
+                    .anyhow()?;
             }
         } else {
             // FONT_10X20 reaches 16 above its baseline and 4 below.
-            Rectangle::new(Point::new(bounds.top_left.x, centre.y + COUNTDOWN_Y - 18), Size::new(bounds.size.width, 24))
-                .into_styled(PrimitiveStyle::with_fill(black))
-                .draw(display)
-                .anyhow()?;
-        }
-        Text::with_alignment(&format!("{seconds} s"), centre + Point::new(0, COUNTDOWN_Y), white, Alignment::Center)
+            Rectangle::new(
+                Point::new(bounds.top_left.x, centre.y + COUNTDOWN_Y - 18),
+                Size::new(bounds.size.width, 24),
+            )
+            .into_styled(PrimitiveStyle::with_fill(black))
             .draw(display)
             .anyhow()?;
+        }
+        Text::with_alignment(
+            &format!("{seconds} s"),
+            centre + Point::new(0, COUNTDOWN_Y),
+            white,
+            Alignment::Center,
+        )
+        .draw(display)
+        .anyhow()?;
         Ok(())
     }
 
     /// Draws text alone in the middle of the screen, e.g. Adopted.
     fn draw_notice(&self, text: &str) -> anyhow::Result<()> {
+        use bruce_embedded_std::graphics::{Color, DrawTargetResultExt};
         use embedded_graphics::mono_font::{MonoTextStyle, ascii::FONT_10X20};
         use embedded_graphics::prelude::*;
         use embedded_graphics::text::{Alignment, Baseline, Text, TextStyleBuilder};
-        use bruce_embedded_std::graphics::{Color, DrawTargetResultExt};
 
         let mut manager = self.display_manager.lock().unwrap();
         if !manager.overlay_active() {
@@ -309,15 +354,20 @@ impl<DM: bruce_embedded_std::graphics::DisplayManager> AdoptionOverlay<DM> {
         let yellow = MonoTextStyle::new(&FONT_10X20, manager.map_color(&Color::Yellow));
         let display = manager.display();
         let centre = display.bounding_box().center();
-        let style = TextStyleBuilder::new().alignment(Alignment::Center).baseline(Baseline::Middle).build();
-        Text::with_text_style(text, centre, yellow, style).draw(display).anyhow()?;
+        let style = TextStyleBuilder::new()
+            .alignment(Alignment::Center)
+            .baseline(Baseline::Middle)
+            .build();
+        Text::with_text_style(text, centre, yellow, style)
+            .draw(display)
+            .anyhow()?;
         Ok(())
     }
 }
 
 #[cfg(feature = "display")]
-impl<DM: bruce_embedded_std::graphics::DisplayManager> bruce_embedded_std::task::scheduler::ScheduledTask<crate::Esp32Platform>
-    for AdoptionOverlay<DM>
+impl<DM: bruce_embedded_std::graphics::DisplayManager>
+    bruce_embedded_std::task::scheduler::ScheduledTask<crate::Esp32Platform> for AdoptionOverlay<DM>
 {
     fn run(&mut self, _sparko: &mut crate::Esp32Platform) -> anyhow::Result<()> {
         let shown = match (self.adoption.pairing(), self.adoption.notice()) {
@@ -350,5 +400,8 @@ fn from_hex(text: &str) -> Option<Vec<u8>> {
     if text.len() % 2 != 0 {
         return None;
     }
-    (0..text.len()).step_by(2).map(|at| u8::from_str_radix(text.get(at..at + 2)?, 16).ok()).collect()
+    (0..text.len())
+        .step_by(2)
+        .map(|at| u8::from_str_radix(text.get(at..at + 2)?, 16).ok())
+        .collect()
 }

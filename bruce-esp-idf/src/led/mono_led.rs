@@ -1,14 +1,11 @@
-
-
+use esp_idf_hal::gpio::OutputPin;
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
-use esp_idf_hal::gpio::OutputPin;
 
-use esp_idf_hal::gpio::PinDriver;
 use bruce_embedded_std::Status;
+use esp_idf_hal::gpio::PinDriver;
 
 use crate::led::LedManager;
-
 
 struct InvertiblePinDriver<'a> {
     pin_driver: PinDriver<'a, esp_idf_hal::gpio::Output>,
@@ -18,10 +15,7 @@ struct InvertiblePinDriver<'a> {
 impl<'a> InvertiblePinDriver<'a> {
     fn new<P: OutputPin + 'a>(pin: P, inverted: bool) -> Self {
         let pin_driver: PinDriver<'a, esp_idf_hal::gpio::Output> = PinDriver::output(pin).unwrap();
-        Self {
-            pin_driver,
-            inverted,
-        }
+        Self { pin_driver, inverted }
     }
 
     fn on(&mut self) -> anyhow::Result<()> {
@@ -41,7 +35,6 @@ impl<'a> InvertiblePinDriver<'a> {
         }
         Ok(())
     }
-    
 }
 
 #[derive(Clone)]
@@ -60,53 +53,49 @@ pub struct MonoLedManager {
     shared_state: Arc<(Mutex<Shared>, Condvar)>,
 }
 
-
 impl MonoLedManager {
-    pub fn new<P: OutputPin + 'static>(
-        inverted: bool,
-        pin: P,
-    ) -> anyhow::Result<Self> {
-        let shared_state = Arc::new((Mutex::new(
-            Shared {
+    pub fn new<P: OutputPin + 'static>(inverted: bool, pin: P) -> anyhow::Result<Self> {
+        let shared_state = Arc::new((
+            Mutex::new(Shared {
                 config: FlashConfig {
                     flashes: 3,
                     burst: Duration::from_secs(1),
                     pause: Duration::from_secs(1),
                 },
-                updated: false
-            }), Condvar::new()));
+                updated: false,
+            }),
+            Condvar::new(),
+        ));
 
         let shared_state_clone = shared_state.clone();
 
-        let result = Self {
-            shared_state,
-         };
+        let result = Self { shared_state };
 
         std::thread::spawn(move || {
             let mut pin_driver = InvertiblePinDriver::new(pin, inverted);
 
-            let (lock , cond_var) = &*shared_state_clone;
+            let (lock, cond_var) = &*shared_state_clone;
 
             loop {
-
                 let mut state = lock.lock().unwrap();
                 let config = state.config.clone();
                 state.updated = false;
                 drop(state);
-                
+
                 if config.flashes == 0 {
                     Self::wait_or_interrupt(lock, cond_var, Duration::from_secs(300));
-                }
-                else if config.flashes == 1 && config.burst == Duration::from_secs(0) && config.pause == Duration::from_secs(0) {
+                } else if config.flashes == 1
+                    && config.burst == Duration::from_secs(0)
+                    && config.pause == Duration::from_secs(0)
+                {
                     pin_driver.on().unwrap();
                     Self::wait_or_interrupt(lock, cond_var, Duration::from_secs(300));
-                }
-                else {
+                } else {
                     Self::flash(&mut pin_driver, lock, cond_var, config);
                 }
             }
         });
-        
+
         Ok(result)
     }
 
@@ -124,20 +113,14 @@ impl MonoLedManager {
                 return;
             }
         }
-        
+
         Self::wait_or_interrupt(lock, cond_var, config.pause);
     }
 
-    fn wait_or_interrupt(
-        lock: &Mutex<Shared>,
-        cvar: &Condvar,
-        timeout: Duration,
-    ) -> bool {
+    fn wait_or_interrupt(lock: &Mutex<Shared>, cvar: &Condvar, timeout: Duration) -> bool {
         let state = lock.lock().unwrap();
 
-        let (state, _) = cvar
-            .wait_timeout(state, timeout)
-            .unwrap();
+        let (state, _) = cvar.wait_timeout(state, timeout).unwrap();
 
         state.updated
     }
@@ -147,13 +130,13 @@ impl MonoLedManager {
             anyhow::bail!("Burst and pause durations must be at least 100ms");
         }
 
-        let (lock , cond_var) = &*self.shared_state;
+        let (lock, cond_var) = &*self.shared_state;
         let mut shared_state = lock.lock().unwrap();
-        
+
         shared_state.config.flashes = flashes;
         shared_state.config.burst = burst;
         shared_state.config.pause = pause;
-        
+
         shared_state.updated = true;
 
         cond_var.notify_all();
@@ -161,22 +144,20 @@ impl MonoLedManager {
     }
 
     pub fn set_flashes(&self, flashes: u32) {
-        let (lock , cond_var) = &*self.shared_state;
+        let (lock, cond_var) = &*self.shared_state;
         let mut shared_state = lock.lock().unwrap();
 
         shared_state.config.flashes = flashes;
-        
+
         shared_state.updated = true;
 
         cond_var.notify_all();
     }
 }
 
-
 impl LedManager for MonoLedManager {
-    
     fn set_on(&self) -> anyhow::Result<()> {
-        let (lock , cond_var) = &*self.shared_state;
+        let (lock, cond_var) = &*self.shared_state;
         let mut shared_state = lock.lock().unwrap();
 
         shared_state.config.flashes = 1;
@@ -190,7 +171,7 @@ impl LedManager for MonoLedManager {
     }
 
     fn set_off(&self) -> anyhow::Result<()> {
-        let (lock , cond_var) = &*self.shared_state;
+        let (lock, cond_var) = &*self.shared_state;
         let mut shared_state = lock.lock().unwrap();
 
         shared_state.config.flashes = 0;

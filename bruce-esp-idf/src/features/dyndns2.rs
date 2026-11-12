@@ -4,16 +4,16 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use croner::Cron;
-use esp_idf_svc::http::Method;
-use esp_idf_svc::http::client::EspHttpConnection;
-use log::info;
 use bruce_embedded_std::config::ConfigSpec;
 use bruce_embedded_std::config::ConfigSpecValue;
 use bruce_embedded_std::config::FeatureConfig;
 use bruce_embedded_std::config::TypedValue;
 use bruce_embedded_std::platform::PlatformInitializer;
 use bruce_embedded_std::task::scheduler::ScheduledTask;
+use croner::Cron;
+use esp_idf_svc::http::Method;
+use esp_idf_svc::http::client::EspHttpConnection;
+use log::info;
 
 use crate::Esp32Platform;
 use crate::Esp32PlatformInitializer;
@@ -49,10 +49,7 @@ impl DynDns2 {
 impl Feature for DynDns2 {
     type Config = DynDns2Config;
 
-    fn init(
-        &self,
-        _initializer: &mut crate::Esp32PlatformInitializer,
-    ) -> anyhow::Result<FeatureDescriptor> {
+    fn init(&self, _initializer: &mut crate::Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor> {
         info!("DynDns2::init()");
 
         Ok(FeatureDescriptor {
@@ -98,10 +95,7 @@ impl ScheduledTask<Esp32Platform> for ResolveTask {
 impl ResolveTask {
     pub fn new(config: DynDns2Config) -> anyhow::Result<Self> {
         let current_dns = Self::resolve_single(&config.hostname)?;
-        info!(
-            "Current DNS resolution for {}: {}",
-            &config.hostname, current_dns
-        );
+        info!("Current DNS resolution for {}: {}", &config.hostname, current_dns);
 
         let addr = Arc::new(Mutex::new(current_dns));
 
@@ -125,11 +119,7 @@ impl ResolveTask {
             Ok(public_ip) => {
                 self.cnt = self.cnt + 1;
                 if public_ip != *self.addr.clone().lock().unwrap() {
-                    log::info!(
-                        "Public IP changed: {} -> {}",
-                        *self.addr.lock().unwrap(),
-                        public_ip
-                    );
+                    log::info!("Public IP changed: {} -> {}", *self.addr.lock().unwrap(), public_ip);
                     let url = format!(
                         "{}?username={}&password={}&hostname={}",
                         self.update_url, self.user_name, self.password, self.host_name
@@ -166,17 +156,11 @@ impl ResolveTask {
             },
         )?);
 
-        info!(
-            "DynDns2: about to get_public_ip_address from: {}",
-            &self.get_ip_url
-        );
+        info!("DynDns2: about to get_public_ip_address from: {}", &self.get_ip_url);
         let request = http_client.request(Method::Get, &self.get_ip_url, &[])?;
         let mut response = request.submit()?;
 
-        info!(
-            "DynDns2: get_public_ip_address Status: {}",
-            response.status()
-        );
+        info!("DynDns2: get_public_ip_address Status: {}", response.status());
 
         let mut body = [0u8; 512];
         let bytes_read = response.read(&mut body)?;
@@ -187,10 +171,7 @@ impl ResolveTask {
 
         let start = html.find("<body>").map(|i| i + "<body>".len()).unwrap_or(0);
 
-        let end = html[start..]
-            .find("</body>")
-            .map(|i| start + i)
-            .unwrap_or(html.len());
+        let end = html[start..].find("</body>").map(|i| start + i).unwrap_or(html.len());
 
         let raw_addr_str = &html[start..end];
 

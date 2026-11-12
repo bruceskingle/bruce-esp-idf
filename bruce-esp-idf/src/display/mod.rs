@@ -1,9 +1,9 @@
+#[cfg(feature = "display-axs15231b")]
+pub mod axs15231b;
 #[cfg(feature = "mipi-dsi-display")]
 pub mod mipi_dsi_display_manager;
 #[cfg(feature = "display-st7305")]
 pub mod st7305;
-#[cfg(feature = "display-axs15231b")]
-pub mod axs15231b;
 
 /// The board's display manager, which features draw with, see Esp32Platform::display_manager.
 #[cfg(feature = "mipi-dsi-display")]

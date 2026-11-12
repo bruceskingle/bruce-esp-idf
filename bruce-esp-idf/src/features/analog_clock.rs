@@ -1,11 +1,6 @@
 use crate::Esp32Platform;
 use crate::Esp32PlatformInitializer;
 use crate::{Feature, FeatureDescriptor};
-use embedded_graphics::prelude::Point;
-use embedded_graphics::prelude::Size;
-use embedded_graphics::primitives::Rectangle;
-use log::info;
-use rgb::RGB8;
 use bruce_embedded_std::Layout;
 use bruce_embedded_std::config::ConfigSpec;
 use bruce_embedded_std::config::ConfigSpecValue;
@@ -15,6 +10,11 @@ use bruce_embedded_std::graphics::ClockRenderer;
 use bruce_embedded_std::graphics::DisplayManager;
 use bruce_embedded_std::platform::PlatformInitializer;
 use bruce_embedded_std::task::scheduler::ScheduledTask;
+use embedded_graphics::prelude::Point;
+use embedded_graphics::prelude::Size;
+use embedded_graphics::primitives::Rectangle;
+use log::info;
+use rgb::RGB8;
 
 /// Optional, so that the clock still starts on a board where they have never been set.
 #[cfg(not(feature = "mono-display"))]
@@ -74,10 +74,7 @@ impl AnalogClock {
 impl Feature for AnalogClock {
     type Config = AnalogClockConfig;
 
-    fn init(
-        &self,
-        _initializer: &mut Esp32PlatformInitializer,
-    ) -> anyhow::Result<FeatureDescriptor> {
+    fn init(&self, _initializer: &mut Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor> {
         info!("AnalogClock::init()");
         // let config = ConfigSpec::builder()
         //     .with(

@@ -43,21 +43,13 @@ impl<'a> RgbLedManager<'a> {
             &esp_idf_hal::ledc::config::TimerConfig::new().frequency(1000.Hz()),
         )?;
 
-        let led_channel_red = Arc::new(Mutex::new(LedcDriver::new(
-            red_channel,
-            &led_timer_driver,
-            red_pin,
-        )?));
+        let led_channel_red = Arc::new(Mutex::new(LedcDriver::new(red_channel, &led_timer_driver, red_pin)?));
         let led_channel_green = Arc::new(Mutex::new(LedcDriver::new(
             green_channel,
             &led_timer_driver,
             green_pin,
         )?));
-        let led_channel_blue = Arc::new(Mutex::new(LedcDriver::new(
-            blue_channel,
-            &led_timer_driver,
-            blue_pin,
-        )?));
+        let led_channel_blue = Arc::new(Mutex::new(LedcDriver::new(blue_channel, &led_timer_driver, blue_pin)?));
 
         Ok(Self {
             inverted,

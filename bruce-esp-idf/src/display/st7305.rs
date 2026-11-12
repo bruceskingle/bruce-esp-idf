@@ -7,9 +7,9 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use bruce_embedded_std::graphics::{Color, Console, DisplayManager};
 use embedded_graphics::{pixelcolor::BinaryColor, prelude::*};
 use esp_idf_hal::gpio::{Output, PinDriver};
-use bruce_embedded_std::graphics::{Color, Console, DisplayManager};
 
 pub const WIDTH: u32 = 400;
 pub const HEIGHT: u32 = 300;
@@ -67,7 +67,11 @@ pub struct St7305 {
 
 impl St7305 {
     /// Resets the panel with reset, starts it, and clears it to white.
-    pub fn new(spi: crate::DisplaySpi, dc: PinDriver<'static, Output>, mut reset: PinDriver<'static, Output>) -> anyhow::Result<Self> {
+    pub fn new(
+        spi: crate::DisplaySpi,
+        dc: PinDriver<'static, Output>,
+        mut reset: PinDriver<'static, Output>,
+    ) -> anyhow::Result<Self> {
         reset.set_high()?;
         std::thread::sleep(Duration::from_millis(50));
         reset.set_low()?;
@@ -76,7 +80,12 @@ impl St7305 {
         std::thread::sleep(Duration::from_millis(50));
         // The panel is not reset again, so its pin is left high.
         std::mem::forget(reset);
-        let mut display = St7305 { spi, dc, buffer: vec![0xFF; BUFFER_LEN], dirty: true };
+        let mut display = St7305 {
+            spi,
+            dc,
+            buffer: vec![0xFF; BUFFER_LEN],
+            dirty: true,
+        };
         for (command, parameters, delay) in INIT {
             display.command(*command, parameters)?;
             if *delay > 0 {
@@ -180,7 +189,10 @@ impl DisplayManager for St7305DisplayManager {
     /// large enough for it to be read, and bold reads better on a reflective screen, so that more fits, e.g. a capture
     /// device's lines under its clock.
     fn console(&self) -> Console {
-        Console { font: &embedded_graphics::mono_font::ascii::FONT_9X15_BOLD, margin: 8 }
+        Console {
+            font: &embedded_graphics::mono_font::ascii::FONT_9X15_BOLD,
+            margin: 8,
+        }
     }
 
     fn overlay_active(&self) -> bool {
@@ -220,18 +232,27 @@ impl DisplayManager for St7305DisplayManager {
 
     fn map_rgb8(&self, color: &rgb::RGB8) -> BinaryColor {
         let luminance = (color.r as u32 * 299 + color.g as u32 * 587 + color.b as u32 * 114) / 1000;
-        if luminance < 64 { BinaryColor::Off } else { BinaryColor::On }
+        if luminance < 64 {
+            BinaryColor::Off
+        } else {
+            BinaryColor::On
+        }
     }
 }
 
 /// Sends the framebuffer to the panel whenever it has changed, every FLUSH_INTERVAL, for as long as the device runs.
 pub fn spawn_flusher(display_manager: &Arc<Mutex<St7305DisplayManager>>) -> anyhow::Result<()> {
     let display_manager = display_manager.clone();
-    std::thread::Builder::new().name("st7305 flush".into()).stack_size(4096).spawn(move || loop {
-        std::thread::sleep(FLUSH_INTERVAL);
-        if let Err(error) = display_manager.lock().unwrap().display.flush() {
-            log::warn!("Unable to update the display, {error:#}");
-        }
-    })?;
+    std::thread::Builder::new()
+        .name("st7305 flush".into())
+        .stack_size(4096)
+        .spawn(move || {
+            loop {
+                std::thread::sleep(FLUSH_INTERVAL);
+                if let Err(error) = display_manager.lock().unwrap().display.flush() {
+                    log::warn!("Unable to update the display, {error:#}");
+                }
+            }
+        })?;
     Ok(())
 }

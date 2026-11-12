@@ -45,9 +45,17 @@ pub fn chip() -> Chip {
         18 => "ESP32-P4",
         20 => "ESP32-C61",
         23 => "ESP32-C5",
-        other => return Chip { model: format!("model {other}"), ..chip_details(&info) },
+        other => {
+            return Chip {
+                model: format!("model {other}"),
+                ..chip_details(&info)
+            };
+        }
     };
-    Chip { model: model.to_string(), ..chip_details(&info) }
+    Chip {
+        model: model.to_string(),
+        ..chip_details(&info)
+    }
 }
 
 /// The chip's details besides its model.
@@ -79,8 +87,21 @@ impl Chip {
     /// e.g. ESP32-C6 v0.2, 1 core, 8 MB flash, no PSRAM.
     pub fn describe(&self) -> String {
         let mb = |bytes: u64| format!("{} MB", bytes / (1024 * 1024));
-        let cores = if self.cores == 1 { "1 core".to_string() } else { format!("{} cores", self.cores) };
-        let psram = if self.psram_bytes == 0 { "no PSRAM".to_string() } else { format!("{} PSRAM", mb(self.psram_bytes)) };
-        format!("{} {}, {cores}, {} flash, {psram}", self.model, self.revision, mb(self.flash_bytes))
+        let cores = if self.cores == 1 {
+            "1 core".to_string()
+        } else {
+            format!("{} cores", self.cores)
+        };
+        let psram = if self.psram_bytes == 0 {
+            "no PSRAM".to_string()
+        } else {
+            format!("{} PSRAM", mb(self.psram_bytes))
+        };
+        format!(
+            "{} {}, {cores}, {} flash, {psram}",
+            self.model,
+            self.revision,
+            mb(self.flash_bytes)
+        )
     }
 }

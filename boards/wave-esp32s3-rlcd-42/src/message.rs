@@ -5,14 +5,14 @@
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use bruce_embedded_std::graphics::{Color, DisplayManager, wrap};
+use bruce_esp_idf::BoardDisplayManager;
 use embedded_graphics::{
     mono_font::{MonoTextStyle, ascii::FONT_10X20},
     pixelcolor::BinaryColor,
     prelude::*,
     text::{Alignment, Text},
 };
-use bruce_embedded_std::graphics::{Color, DisplayManager, wrap};
-use bruce_esp_idf::BoardDisplayManager;
 
 /// How long the message is shown.
 const SHOWN_FOR: Duration = Duration::from_secs(1);

@@ -4,14 +4,6 @@ use crate::commands::EspCommands;
 use crate::config_store::EspConfigStoreFactory;
 use crate::http::EspHttpServerManager;
 use crate::{core::Core, wifi::WiFiManager};
-use chrono::Local;
-use esp_idf_svc::sntp::*;
-use esp_idf_svc::{
-    eventloop::EspSystemEventLoop, hal::peripherals::Peripherals, http::Method,
-    nvs::EspDefaultNvsPartition,
-};
-use esp_idf_sys::*;
-use log::{error, info};
 use bruce_embedded_std::config::Config;
 use bruce_embedded_std::config_manager::{ConfigManager, ConfigManagerBuilder};
 use bruce_embedded_std::http_server::HttpServerManager;
@@ -21,6 +13,13 @@ use bruce_embedded_std::{
     problem::ProblemManager,
     task::scheduler::{ScheduledTask, TaskScheduler, TaskSchedulerBuilder},
 };
+use chrono::Local;
+use esp_idf_svc::sntp::*;
+use esp_idf_svc::{
+    eventloop::EspSystemEventLoop, hal::peripherals::Peripherals, http::Method, nvs::EspDefaultNvsPartition,
+};
+use esp_idf_sys::*;
+use log::{error, info};
 use std::ffi::CStr;
 use std::net::Ipv4Addr;
 use std::sync::mpsc;
@@ -39,6 +38,8 @@ use crate::led::mono_led::MonoLedManager;
 use crate::led::rgb_led::RgbLedManager;
 #[cfg(feature = "simple-led")]
 use crate::led::simple_led::SimpleLedManager;
+#[cfg(feature = "display")]
+use bruce_embedded_std::{DisplayOrientation, graphics::DisplayManager};
 #[cfg(feature = "board-esp32c3-supermini")]
 use esp_idf_hal::gpio::AnyIOPin;
 #[cfg(feature = "mipi-dsi-display")]
@@ -47,8 +48,6 @@ use esp_idf_hal::gpio::{Output, PinDriver};
 use esp_idf_hal::spi::{Dma, SpiDeviceDriver, SpiDriver, SpiDriverConfig};
 #[cfg(feature = "mipi-dsi-display")]
 use esp_idf_hal::spi::{SpiDeviceDriver, SpiDriver};
-#[cfg(feature = "display")]
-use bruce_embedded_std::{DisplayOrientation, graphics::DisplayManager};
 
 #[cfg(feature = "led")]
 use crate::led::LedManager;
@@ -79,9 +78,7 @@ fn list_nvs_keys() {
 
                 nvs_entry_info(it, &mut info);
 
-                let namespace = CStr::from_ptr(info.namespace_name.as_ptr())
-                    .to_str()
-                    .unwrap();
+                let namespace = CStr::from_ptr(info.namespace_name.as_ptr()).to_str().unwrap();
 
                 let key = CStr::from_ptr(info.key.as_ptr()).to_str().unwrap();
 
@@ -123,8 +120,7 @@ impl PlatformInitializer for Esp32PlatformInitializer {
         task_initializer: Box<dyn ScheduledTask<Esp32Platform>>,
         schedule_spec: &str,
     ) -> anyhow::Result<()> {
-        self.task_manager_builder
-            .add_task(task_initializer, schedule_spec)?;
+        self.task_manager_builder.add_task(task_initializer, schedule_spec)?;
         Ok(())
     }
 }
@@ -468,8 +464,7 @@ impl Esp32PlatformBuilder {
 
         list_nvs_keys();
 
-        let config_store_factory =
-            EspConfigStoreFactory::new(nvs_partition.clone(), problem_manager.clone())?;
+        let config_store_factory = EspConfigStoreFactory::new(nvs_partition.clone(), problem_manager.clone())?;
         let mut config_manager_builder = ConfigManager::builder(
             Box::new(config_store_factory),
             problem_manager.clone(),
@@ -478,15 +473,11 @@ impl Esp32PlatformBuilder {
         )?;
 
         let mut initializer = Esp32PlatformInitializer::new();
-        let (wifi_sender, wifi_receiver): (
-            Sender<std::net::Ipv4Addr>,
-            Receiver<std::net::Ipv4Addr>,
-        ) = mpsc::channel();
+        let (wifi_sender, wifi_receiver): (Sender<std::net::Ipv4Addr>, Receiver<std::net::Ipv4Addr>) = mpsc::channel();
         let core_feature = Core::new(wifi_receiver)?;
         let descriptor = core_feature.init(&mut initializer)?;
         let core_feature_name = descriptor.name.clone();
-        let (core_feature_config, core_config_valid) =
-            config_manager_builder.add_feature(descriptor, true)?;
+        let (core_feature_config, core_config_valid) = config_manager_builder.add_feature(descriptor, true)?;
 
         let peripherals = Peripherals::take()?;
         let modem = peripherals.modem;
@@ -555,13 +546,16 @@ impl Esp32PlatformBuilder {
                 Some(peripherals.pins.gpio12), //SDI / MISO
                 &SpiDriverConfig::new().dma(Dma::Auto(4096)),
             )?));
-            let spi = SpiDeviceDriver::new(bus, Some(peripherals.pins.gpio15), &SpiConfig::new().baudrate(Hertz(20_000_000)))?;
+            let spi = SpiDeviceDriver::new(
+                bus,
+                Some(peripherals.pins.gpio15),
+                &SpiConfig::new().baudrate(Hertz(20_000_000)),
+            )?;
 
             // GPIO
             let dc = PinDriver::output(peripherals.pins.gpio2)?;
             // let reset = PinDriver::output(peripherals.pins.gpio4)?;
-            let back_light: PinDriver<'static, esp_idf_hal::gpio::Output> =
-                PinDriver::output(peripherals.pins.gpio21)?;
+            let back_light: PinDriver<'static, esp_idf_hal::gpio::Output> = PinDriver::output(peripherals.pins.gpio21)?;
 
             (remainder, spi, dc, back_light)
         };
@@ -603,7 +597,11 @@ impl Esp32PlatformBuilder {
                 None::<esp_idf_hal::gpio::AnyInputPin>, // MISO not used
                 &SpiDriverConfig::new().dma(Dma::Auto(4096)),
             )?));
-            let spi = SpiDeviceDriver::new(bus, Some(peripherals.pins.gpio14), &SpiConfig::new().baudrate(Hertz(40_000_000)))?;
+            let spi = SpiDeviceDriver::new(
+                bus,
+                Some(peripherals.pins.gpio14),
+                &SpiConfig::new().baudrate(Hertz(40_000_000)),
+            )?;
 
             // Control pins
             let dc = PinDriver::output(peripherals.pins.gpio15)?;
@@ -641,12 +639,16 @@ impl Esp32PlatformBuilder {
             // Shared by the display and the SD card slot.
             let bus: &'static SpiDriver<'static> = Box::leak(Box::new(SpiDriver::new(
                 peripherals.spi2,
-                peripherals.pins.gpio1,        // SCLK
-                peripherals.pins.gpio2,        // MOSI
-                Some(peripherals.pins.gpio3),  // MISO, the SD card's
+                peripherals.pins.gpio1,       // SCLK
+                peripherals.pins.gpio2,       // MOSI
+                Some(peripherals.pins.gpio3), // MISO, the SD card's
                 &SpiDriverConfig::new().dma(Dma::Auto(4096)),
             )?));
-            let spi = SpiDeviceDriver::new(bus, Some(peripherals.pins.gpio14), &SpiConfig::new().baudrate(Hertz(40_000_000)))?;
+            let spi = SpiDeviceDriver::new(
+                bus,
+                Some(peripherals.pins.gpio14),
+                &SpiConfig::new().baudrate(Hertz(40_000_000)),
+            )?;
             // After the display's device, which holds its chip select high, so that the display ignores the card's
             // start up, see sd_card.rs.
             #[cfg(feature = "sd-card")]
@@ -665,27 +667,13 @@ impl Esp32PlatformBuilder {
 
             let config = I2cConfig::new().baudrate(Hertz(400_000));
 
-            let i2c = Arc::new(Mutex::new(I2cDriver::new(
-                peripherals.i2c0,
-                sda,
-                scl,
-                &config,
-            )?));
+            let i2c = Arc::new(Mutex::new(I2cDriver::new(peripherals.i2c0, sda, scl, &config)?));
 
-            let touch_driver_factory =
-                TouchDriver::factory(peripherals.pins.gpio21, peripherals.pins.gpio20, &i2c)?;
+            let touch_driver_factory = TouchDriver::factory(peripherals.pins.gpio21, peripherals.pins.gpio20, &i2c)?;
 
             // int_pin, rst_pin, i2c, width, height, rotation): esp_idf_hal::gpio::AnyInputPin<'static> = peripherals.pins.gpio21.into();
 
-            (
-                remainder,
-                spi,
-                dc,
-                back_light,
-                reset,
-                i2c,
-                touch_driver_factory,
-            )
+            (remainder, spi, dc, back_light, reset, i2c, touch_driver_factory)
         };
 
         #[cfg(feature = "board-esp32-devkit-v1")]
@@ -718,7 +706,10 @@ impl Esp32PlatformBuilder {
         // The bus of the board's RTC, temperature and humidity sensor and audio codec.
         #[cfg(feature = "board-wave-esp32s3-rlcd-42")]
         let i2c = {
-            use esp_idf_hal::{i2c::{I2cConfig, I2cDriver}, units::Hertz};
+            use esp_idf_hal::{
+                i2c::{I2cConfig, I2cDriver},
+                units::Hertz,
+            };
             Arc::new(Mutex::new(I2cDriver::new(
                 peripherals.i2c0,
                 peripherals.pins.gpio13, // SDA
@@ -763,11 +754,16 @@ impl Esp32PlatformBuilder {
             .map(Arc::new);
         // The SD card slot, mounted here, not in build, so that the card is there whatever else fails.
         #[cfg(all(feature = "board-wave-esp32s3-rlcd-42", feature = "sd-card"))]
-        let sd_card = crate::sd_card::mount_mmc(peripherals.sdmmc1, peripherals.pins.gpio21, peripherals.pins.gpio38, peripherals.pins.gpio39)
-            .map_err(|error| {
-                log::warn!("No SD card: {error:#}");
-                format!("{error:#}")
-            });
+        let sd_card = crate::sd_card::mount_mmc(
+            peripherals.sdmmc1,
+            peripherals.pins.gpio21,
+            peripherals.pins.gpio38,
+            peripherals.pins.gpio39,
+        )
+        .map_err(|error| {
+            log::warn!("No SD card: {error:#}");
+            format!("{error:#}")
+        });
         #[cfg(feature = "board-wave-esp32s3-rlcd-42")]
         let (remainder, st7305) = {
             use esp_idf_hal::{
@@ -787,12 +783,16 @@ impl Esp32PlatformBuilder {
             // The display only listens, so the bus has no MISO.
             let bus: &'static SpiDriver<'static> = Box::leak(Box::new(SpiDriver::new(
                 peripherals.spi2,
-                peripherals.pins.gpio11,  // SCLK
-                peripherals.pins.gpio12,  // MOSI
+                peripherals.pins.gpio11, // SCLK
+                peripherals.pins.gpio12, // MOSI
                 None::<AnyIOPin<'static>>,
                 &SpiDriverConfig::new().dma(Dma::Auto(4096)),
             )?));
-            let spi = SpiDeviceDriver::new(bus, Some(peripherals.pins.gpio40), &SpiConfig::new().baudrate(Hertz(10_000_000)))?;
+            let spi = SpiDeviceDriver::new(
+                bus,
+                Some(peripherals.pins.gpio40),
+                &SpiConfig::new().baudrate(Hertz(10_000_000)),
+            )?;
             let st7305 = crate::display::st7305::St7305::new(
                 spi,
                 PinDriver::output(peripherals.pins.gpio5)?,  // DC
@@ -831,8 +831,16 @@ impl Esp32PlatformBuilder {
             };
             // The display's bus is driven through ESP-IDF's esp_lcd, by pin number, so its pins and SPI2 are not used
             // here other than to keep them from the Remainder.
-            let _ = (peripherals.spi2, peripherals.pins.gpio1, peripherals.pins.gpio21, peripherals.pins.gpio39,
-                peripherals.pins.gpio40, peripherals.pins.gpio45, peripherals.pins.gpio47, peripherals.pins.gpio48);
+            let _ = (
+                peripherals.spi2,
+                peripherals.pins.gpio1,
+                peripherals.pins.gpio21,
+                peripherals.pins.gpio39,
+                peripherals.pins.gpio40,
+                peripherals.pins.gpio45,
+                peripherals.pins.gpio47,
+                peripherals.pins.gpio48,
+            );
             let axs15231b = crate::display::axs15231b::Axs15231b::new(crate::display::axs15231b::Pins {
                 clock: 47,
                 chip_select: 45,
@@ -840,7 +848,10 @@ impl Esp32PlatformBuilder {
                 backlight: 1,
             })?;
             let touch_i2c = {
-                use esp_idf_hal::{i2c::{I2cConfig, I2cDriver}, units::Hertz};
+                use esp_idf_hal::{
+                    i2c::{I2cConfig, I2cDriver},
+                    units::Hertz,
+                };
                 I2cDriver::new(
                     peripherals.i2c0,
                     peripherals.pins.gpio4, // SDA
@@ -904,7 +915,11 @@ impl Esp32PlatformBuilder {
             core_feature_config,
             wifi_sender,
             modem,
-            firmware: crate::Firmware { name: "unknown", version: "unknown", record: None },
+            firmware: crate::Firmware {
+                name: "unknown",
+                version: "unknown",
+                record: None,
+            },
             #[cfg(feature = "board-cyd-esp32-28")]
             boot_button,
             #[cfg(feature = "sd-card")]
@@ -949,7 +964,10 @@ impl Esp32PlatformBuilder {
         #[cfg(feature = "shtc3")]
         let builder = {
             let mut builder = builder;
-            builder.internal_add_feature(Box::new(crate::features::temperature_humidity::TemperatureHumidity), true)?;
+            builder.internal_add_feature(
+                Box::new(crate::features::temperature_humidity::TemperatureHumidity),
+                true,
+            )?;
             builder
         };
         // The screen's settings, and the backlight on, unless they say to keep it off: the AXS15231B's now that the
@@ -989,7 +1007,9 @@ impl Esp32PlatformBuilder {
             if let Some(holder) = builder.features.last() {
                 use bruce_embedded_std::config::FeatureConfig;
                 match crate::features::speaker_settings::SpeakerConfig::from_config_spec(&holder.config.spec) {
-                    Ok(config) => builder.speaker.set_volume(crate::features::speaker_settings::volume(&config)),
+                    Ok(config) => builder
+                        .speaker
+                        .set_volume(crate::features::speaker_settings::volume(&config)),
                     Err(error) => error!("Unable to read the speaker's volume: {error:#}"),
                 }
             }
@@ -999,10 +1019,7 @@ impl Esp32PlatformBuilder {
     }
 
     #[cfg(feature = "mipi-dsi-display")]
-    pub fn with_display_orientation(
-        mut self,
-        orientation: DisplayOrientation,
-    ) -> anyhow::Result<Self> {
+    pub fn with_display_orientation(mut self, orientation: DisplayOrientation) -> anyhow::Result<Self> {
         self.orientation = orientation;
 
         Ok(self)
@@ -1017,7 +1034,10 @@ impl Esp32PlatformBuilder {
         let id: String = mac.iter().map(|byte| format!("{byte:02x}")).collect();
         match firmware.record {
             Some(record) => info!("{record} id={id}"),
-            None => info!("{} {}, with no firmware record, id={id}", firmware.name, firmware.version),
+            None => info!(
+                "{} {}, with no firmware record, id={id}",
+                firmware.name, firmware.version
+            ),
         }
         self.firmware = firmware;
         self
@@ -1059,24 +1079,14 @@ impl Esp32PlatformBuilder {
         self
     }
 
-    fn internal_add_feature(
-        &mut self,
-        feature: Box<dyn DynFeature>,
-        internal: bool,
-    ) -> anyhow::Result<()> {
+    fn internal_add_feature(&mut self, feature: Box<dyn DynFeature>, internal: bool) -> anyhow::Result<()> {
         // let descriptor = feature.init(&mut self.initializer)?;
         // self.features.push(feature);
 
         let descriptor = feature.do_init(&mut self.initializer)?;
         let name = descriptor.name.clone();
-        let (config, _valid) = self
-            .config_manager_builder
-            .add_feature(descriptor, internal)?;
-        self.features.push(FeatureHolder {
-            feature,
-            config,
-            name,
-        });
+        let (config, _valid) = self.config_manager_builder.add_feature(descriptor, internal)?;
+        self.features.push(FeatureHolder { feature, config, name });
 
         Ok(())
     }
@@ -1307,9 +1317,7 @@ impl Esp32PlatformBuilder {
                 display,
             };
 
-            touch_driver = self
-                .touch_driver_factory
-                .build(172, 320, self.orientation)?;
+            touch_driver = self.touch_driver_factory.build(172, 320, self.orientation)?;
 
             imu = Qmi8658::new(&self.i2c)?;
 
@@ -1327,11 +1335,19 @@ impl Esp32PlatformBuilder {
 
         #[cfg(feature = "display-st7305")]
         {
-            display_manager = crate::display::st7305::St7305DisplayManager { display: self.st7305, overlay: false, generation: 0 };
+            display_manager = crate::display::st7305::St7305DisplayManager {
+                display: self.st7305,
+                overlay: false,
+                generation: 0,
+            };
         }
         #[cfg(feature = "display-axs15231b")]
         {
-            display_manager = crate::display::axs15231b::Axs15231bDisplayManager { display: self.axs15231b, overlay: false, generation: 0 };
+            display_manager = crate::display::axs15231b::Axs15231bDisplayManager {
+                display: self.axs15231b,
+                overlay: false,
+                generation: 0,
+            };
             touch_driver = TouchDriver::start(self.touch_i2c)?;
         }
 
@@ -1357,8 +1373,13 @@ impl Esp32PlatformBuilder {
         server_manager.init_captive_portal(&self.ap_mode)?;
 
         let config_manager = Arc::new(bare_config_manager);
-        config_manager.set_about(format!("{} {}, built for a {} board, running on an {}", self.firmware.name,
-            self.firmware.version, crate::board_name(), crate::chip::chip().describe()));
+        config_manager.set_about(format!(
+            "{} {}, built for a {} board, running on an {}",
+            self.firmware.name,
+            self.firmware.version,
+            crate::board_name(),
+            crate::chip::chip().describe()
+        ));
 
         #[cfg(esp_idf_esp_https_server_enable)]
         let adoption = crate::adoption::Adoption::load(&self.nvs_partition, config_manager.clone())?;
@@ -1485,8 +1506,7 @@ pub struct Esp32PlatformRunner {
 
 impl Esp32PlatformRunner {
     pub fn start(mut self) -> anyhow::Result<()> {
-        self.sparko_std
-            .start(self.initializer, self.core_feature_holder)
+        self.sparko_std.start(self.initializer, self.core_feature_holder)
     }
 }
 
@@ -1565,12 +1585,15 @@ impl Esp32Platform {
     /// None if the API server did not start.
     #[cfg(esp_idf_esp_https_server_enable)]
     pub fn device_id(&self) -> Option<String> {
-        self.api_server.as_ref().map(|api_server| api_server.identity().id.clone())
+        self.api_server
+            .as_ref()
+            .map(|api_server| api_server.identity().id.clone())
     }
 
     /// The device's name on the network, e.g. cyd, from its mDNS hostname setting, if it has one.
     pub fn hostname(&self) -> Option<String> {
-        self.config_manager.value(crate::core::CORE_FEATURE_NAME, "mdns_hostname")
+        self.config_manager
+            .value(crate::core::CORE_FEATURE_NAME, "mdns_hostname")
     }
 
     /// The device's address on the Wi-Fi, None until it has one, e.g. in AP mode, so that a device which has not been
@@ -1625,7 +1648,11 @@ impl Esp32Platform {
     /// Where the SD card is mounted, for std::fs, or why there is none, see sd_card.rs.
     pub fn sd_card(&self) -> Result<&'static str, String> {
         #[cfg(feature = "sd-card")]
-        return self.sd_card.as_ref().map(|_| crate::sd_card::MOUNT_POINT).map_err(Clone::clone);
+        return self
+            .sd_card
+            .as_ref()
+            .map(|_| crate::sd_card::MOUNT_POINT)
+            .map_err(Clone::clone);
         #[cfg(not(feature = "sd-card"))]
         Err("this firmware has no SD card support".to_string())
     }
@@ -1658,17 +1685,12 @@ impl Esp32Platform {
         lines
     }
 
-    fn start_feature(
-        &mut self,
-        mut feature_holder: FeatureHolder,
-        mut initializer: &mut Esp32PlatformInitializer,
-    ) {
+    fn start_feature(&mut self, mut feature_holder: FeatureHolder, mut initializer: &mut Esp32PlatformInitializer) {
         if feature_holder.config.enabled.is_enabled() {
-            match feature_holder.feature.start_with_config(
-                self,
-                &mut initializer,
-                &feature_holder.config.spec,
-            ) {
+            match feature_holder
+                .feature
+                .start_with_config(self, &mut initializer, &feature_holder.config.spec)
+            {
                 Ok(_) => info!("Started Feature {}", feature_holder.name),
                 Err(error) => error!("FAILED to start Feature {}: {}", feature_holder.name, error),
             }
@@ -1688,8 +1710,14 @@ impl Esp32Platform {
 
         // The network, why the device started, e.g. Brownout, and how joining is going, so that it can be seen why a
         // device which is not plugged into a computer is not joining.
-        let ssid = self.config_manager.value(crate::core::CORE_FEATURE_NAME, "ssid").unwrap_or_default();
-        let mut joining = vec![format!("Network {ssid}"), format!("Started by {}", crate::reset_reason())];
+        let ssid = self
+            .config_manager
+            .value(crate::core::CORE_FEATURE_NAME, "ssid")
+            .unwrap_or_default();
+        let mut joining = vec![
+            format!("Network {ssid}"),
+            format!("Started by {}", crate::reset_reason()),
+        ];
         if let Some(panic) = crate::panics::last() {
             joining.push(panic.to_string());
         }
@@ -1701,8 +1729,11 @@ impl Esp32Platform {
             #[cfg(feature = "display")]
             {
                 let details: Vec<String> = joining.iter().cloned().chain([state.to_string()]).collect();
-                if let Err(error) = display_manager.lock().unwrap()
-                    .show_status(&Status::Initializing(InitStatus::AwaitingClientIpAddress), &details) {
+                if let Err(error) = display_manager
+                    .lock()
+                    .unwrap()
+                    .show_status(&Status::Initializing(InitStatus::AwaitingClientIpAddress), &details)
+                {
                     log::warn!("Unable to show the Wi-Fi progress, {error:#}");
                 }
             }
@@ -1765,7 +1796,9 @@ impl Esp32Platform {
             let firmware = self.firmware;
             self.api_get("/api/starts", move |request| {
                 let mut response = request.into_response(200, None, &[("Content-Type", "application/json")])?;
-                crate::starts::write_json(&nvs_partition, firmware, &mut |bytes| Ok(esp_idf_svc::io::Write::write_all(&mut response, bytes)?))
+                crate::starts::write_json(&nvs_partition, firmware, &mut |bytes| {
+                    Ok(esp_idf_svc::io::Write::write_all(&mut response, bytes)?)
+                })
             })?;
         }
 

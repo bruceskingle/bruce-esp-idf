@@ -1,0 +1,176 @@
+{
+	// A workspace for working on Bruce's ESP-IDF Platform: this repository, as its files are, and the repositories next
+	// to it which it builds with, see the README's Development section. rust-analyzer checks one board at a time, the
+	// one rust-analyzer.linkedProjects names, below; switch boards with its commented out lines. The
+	// bruce-smart-home, its data, bruce-graphql, bruce-db, bruce-util-progress and bruce-method-release folders are the
+	// author's own setup: to look at this repository alone, comment them out, and any of the others not checked out next
+	// to it.
+	"folders": [
+		{
+			"name": "bruce-smart-home",
+			"path": "../bruce-smart-home"
+		},
+		{
+			"path": "../../.bruce-smart-home-data"
+		},
+		{
+			"path": "../bruce-graphql"
+		},
+		{
+			"name": "bruce-esp-idf",
+			"path": "."
+		},
+		{
+			"name": "bruce-embedded-std",
+			"path": "../bruce-embedded-std"
+		},
+		{
+			"name": "bruce-embedded-firmware-record",
+			"path": "../bruce-embedded-firmware-record"
+		},
+		{
+			"name": "bruce-embedded-flash",
+			"path": "../bruce-embedded-flash"
+		},
+		{
+			"path": "../bruce-db"
+		},
+		{
+			"path": "../bruce-util-progress"
+		},
+		{
+			"path": "../bruce-method-release"
+		},
+		{
+			"path": "../sleepy-eyes-clock"
+		}
+	],
+	"settings": {
+		"explorer.autoReveal": false,
+		"files.exclude": {
+			// ".vscode": true,
+			// "target": true
+		},
+		"rust-analyzer.linkedProjects": [
+			// "boards/wave-esp32c6-touch-147/Cargo.toml",
+			// "boards/cyd-esp32-28/Cargo.toml",
+			"boards/esp32-devkit-v1/Cargo.toml",
+			// "boards/esp32c3-supermini/Cargo.toml",
+			// "boards/wave-esp32c6-lcd-147/Cargo.toml",
+			// "boards/wave-esp32c6-touch-147/Cargo.toml",
+			// "boards/seeed-esp32c6-xiao/Cargo.toml",
+			"../bruce-embedded-std/Cargo.toml", // This is needed
+			"../bruce-smart-home/Cargo.toml",
+			// "bruce-esp-idf/Cargo.toml", this causes weird errors but I dont understand why
+		],
+		// // "rust-analyzer.cargo.features": "all",
+		// // "rust-analyzer.cargo.features": ["board-seeed-esp32c6-xiao"],
+		// // "rust-analyzer.cargo.features": ["board-wave-esp32c6-touch-147", "tilt", "ahrs", "touch"],
+		// // "rust-analyzer.cargo.features": ["board-wave-esp32c6-lcd-147"],
+		// // "rust-analyzer.cargo.target": "riscv32imac-esp-espidf",
+		// // "rust-analyzer.cargo.extraEnv": {
+		// // "MCU": "esp32c6"
+		// // },
+		// "rust-analyzer.cargo.features": [
+		// 	// "board-cyd-esp32-28"
+		// 	"board-esp32-devkit-v1"
+		// ],
+		// // "rust-analyzer.cargo.features": ["board-esp32-devkit-v1"],
+		// "rust-analyzer.cargo.target": "xtensa-esp32-espidf",
+		// "rust-analyzer.cargo.extraEnv": {
+		// 	"MCU": "esp32"
+		// },
+		// // "rust-analyzer.cargo.features": ["board-esp32c3-supermini"],
+		// // "rust-analyzer.cargo.target": "riscv32imc-esp-espidf",
+		// // "rust-analyzer.cargo.extraEnv": {
+		// // "MCU": "esp32c3"
+		// // },
+		// // x
+		"editor.formatOnSave": true,
+		"cSpell.words": [
+			"Condvar",
+			"connecttest",
+			"croner",
+			"devkitv",
+			"dyndns",
+			"eventloop",
+			"heapless",
+			"Madgwick",
+			"maxlength",
+			"Mdns",
+			"mipi",
+			"schedulable",
+			"sntp",
+			"stylesheet",
+			"Timelike",
+			"tzset"
+		],
+		// "rust-analyzer.check.overrideCommand": [
+		// 	"cargo",
+		// 	"check",
+		// 	"--release",
+		// 	"--workspace",
+		// 	"--message-format=json"
+		// ],
+		"rust-analyzer.cargo.extraArgs": [
+			"--release",
+		],
+		"rust-analyzer.checkOnSave": true
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": [
+			{
+				// Builds the XIAO ESP32-C6's demo and copies it to the shared firmware folder's bruce-esp-idf/dev/, where
+				// the flasher finds it: a plain cargo build leaves it only in the board's target/.
+				"label": "Firmware: Build XIAO C6",
+				"type": "shell",
+				"command": "./build.sh seeed-esp32c6-xiao",
+				"options": { "cwd": "${workspaceFolder:bruce-esp-idf}" },
+				"problemMatcher": ["$rustc"]
+			}
+		]
+	},
+	"launch": {
+		"version": "0.2.0",
+		"configurations": [
+			{
+				// The stand alone flasher window, after building the XIAO C6's firmware into the shared folder, to flash it
+				// from bruce-esp-idf's dev version there.
+				"type": "lldb",
+				"request": "launch",
+				"name": "Flasher: XIAO C6 firmware",
+				"preLaunchTask": "Firmware: Build XIAO C6",
+				"cargo": {
+					"args": [
+						"build",
+						"--manifest-path=${workspaceFolder:bruce-embedded-flash}/bruce-embedded-flash-ui/Cargo.toml",
+						"--features=desktop",
+						"--bin=bruce-embedded-flash-gui"
+					],
+					"filter": { "name": "bruce-embedded-flash-gui", "kind": "bin" }
+				},
+				"args": [],
+				"cwd": "${workspaceFolder:bruce-embedded-flash}/bruce-embedded-flash-ui"
+			},
+			{
+				// The stand alone flasher window, with whatever firmware is in the shared folder, e.g. the capture
+				// firmware built there by bruce-smart-home's capture/build-firmware.sh.
+				"type": "lldb",
+				"request": "launch",
+				"name": "Flasher",
+				"cargo": {
+					"args": [
+						"build",
+						"--manifest-path=${workspaceFolder:bruce-embedded-flash}/bruce-embedded-flash-ui/Cargo.toml",
+						"--features=desktop",
+						"--bin=bruce-embedded-flash-gui"
+					],
+					"filter": { "name": "bruce-embedded-flash-gui", "kind": "bin" }
+				},
+				"args": [],
+				"cwd": "${workspaceFolder:bruce-embedded-flash}/bruce-embedded-flash-ui"
+			}
+		]
+	}
+}

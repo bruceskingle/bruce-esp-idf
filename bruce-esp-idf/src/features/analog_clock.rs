@@ -1,0 +1,178 @@
+use crate::Esp32Platform;
+use crate::Esp32PlatformInitializer;
+use crate::{Feature, FeatureDescriptor};
+use bruce_embedded_std::Layout;
+use bruce_embedded_std::config::ConfigSpec;
+use bruce_embedded_std::config::ConfigSpecValue;
+use bruce_embedded_std::config::FeatureConfig;
+use bruce_embedded_std::config::TypedValue;
+use bruce_embedded_std::graphics::ClockRenderer;
+use bruce_embedded_std::graphics::DisplayManager;
+use bruce_embedded_std::platform::PlatformInitializer;
+use bruce_embedded_std::task::scheduler::ScheduledTask;
+use embedded_graphics::prelude::Point;
+use embedded_graphics::prelude::Size;
+use embedded_graphics::primitives::Rectangle;
+use log::info;
+use rgb::RGB8;
+
+/// Optional, so that the clock still starts on a board where they have never been set.
+#[cfg(not(feature = "mono-display"))]
+#[derive(FeatureConfig)]
+#[config(label = "Clock")]
+pub struct AnalogClockConfig {
+    /// Green if not set.
+    #[config(label = "Clock Colour")]
+    pub clock_color: Option<RGB8>,
+    /// Black if not set.
+    #[config(label = "Background Colour")]
+    pub bg_color: Option<RGB8>,
+}
+
+/// None on a black and white display, which draws the clock in ink on paper, see DisplayManager::map_rgb8.
+#[cfg(feature = "mono-display")]
+#[derive(FeatureConfig)]
+#[config(label = "Clock")]
+pub struct AnalogClockConfig {}
+
+pub struct AnalogClockBuilder {
+    layout: Option<Layout>,
+}
+
+impl AnalogClockBuilder {
+    pub fn new() -> Self {
+        Self { layout: None }
+    }
+
+    pub fn with_layout(mut self, layout: Layout) -> Self {
+        self.layout = Some(layout);
+        self
+    }
+
+    pub fn build(self) -> anyhow::Result<AnalogClock> {
+        Ok(AnalogClock {
+            layout: self.layout.unwrap_or(|bounding_box: &Rectangle| {
+                Rectangle::new(
+                    Point::new(bounding_box.top_left.x + 1, bounding_box.top_left.y + 1),
+                    Size::new(bounding_box.size.width - 2, bounding_box.size.height - 2),
+                )
+            }),
+        })
+    }
+}
+
+pub struct AnalogClock {
+    layout: Layout,
+}
+
+impl AnalogClock {
+    pub fn builder() -> AnalogClockBuilder {
+        AnalogClockBuilder::new()
+    }
+}
+
+impl Feature for AnalogClock {
+    type Config = AnalogClockConfig;
+
+    fn init(&self, _initializer: &mut Esp32PlatformInitializer) -> anyhow::Result<FeatureDescriptor> {
+        info!("AnalogClock::init()");
+        // let config = ConfigSpec::builder()
+        //     .with(
+        //         CLOCK_COLOR.to_string(),
+        //         ConfigSpecValue::new(TypedValue::Color(Some(parse_rgb8("#00ff00")?)), true),
+        //     )?
+        //     .with(
+        //         BG_COLOR.to_string(),
+        //         ConfigSpecValue::new(TypedValue::Color(Some(parse_rgb8("#000000")?)), true),
+        //     )?
+        //     .build();
+
+        Ok(FeatureDescriptor {
+            name: "AnalogClock".to_string(),
+            config: AnalogClockConfig::to_config_spec()?,
+        })
+    }
+
+    fn start(
+        &mut self,
+        platform: &mut Esp32Platform,
+        initializer: &mut Esp32PlatformInitializer,
+        config: AnalogClockConfig,
+    ) -> anyhow::Result<()> {
+        // let clock_color = match config.map.get(CLOCK_COLOR) {
+        //     Some(color) => {
+        //         if let TypedValue::Color(Some(val)) = color {
+        //             val
+        //         } else {
+        //             &RGB8 { r: 0, g: 255, b: 0 }
+        //         }
+        //     }
+        //     None => &RGB8 { r: 0, g: 255, b: 0 },
+        // };
+
+        // let bg_color = match config.map.get(BG_COLOR) {
+        //     Some(color) => {
+        //         if let TypedValue::Color(Some(val)) = color {
+        //             val
+        //         } else {
+        //             &RGB8 { r: 0, g: 0, b: 0 }
+        //         }
+        //     }
+        //     None => &RGB8 { r: 0, g: 0, b: 0 },
+        // };
+        initializer.add_task(
+            Box::new(ResolveTask {
+                clock_renderer: ClockRenderer::new(
+                    &platform.display_manager,
+                    self.layout,
+                    clock_color(&config),
+                    bg_color(&config),
+                )?,
+            }),
+            "* * * * * *",
+        )?;
+        Ok(())
+    }
+}
+
+/// The clock's colour, green if not set, or always, on a black and white display, where it is ink.
+fn clock_color(#[allow(unused_variables)] config: &AnalogClockConfig) -> RGB8 {
+    #[cfg(not(feature = "mono-display"))]
+    if let Some(color) = config.clock_color {
+        return color;
+    }
+    RGB8 { r: 0, g: 255, b: 0 }
+}
+
+/// The background's colour, black if not set, or always, on a black and white display, where it is paper.
+fn bg_color(#[allow(unused_variables)] config: &AnalogClockConfig) -> RGB8 {
+    #[cfg(not(feature = "mono-display"))]
+    if let Some(color) = config.bg_color {
+        return color;
+    }
+    RGB8 { r: 0, g: 0, b: 0 }
+}
+
+pub struct ResolveTask<DM>
+where
+    DM: DisplayManager,
+{
+    clock_renderer: ClockRenderer<DM>,
+}
+
+impl<DM> ScheduledTask<Esp32Platform> for ResolveTask<DM>
+where
+    DM: DisplayManager,
+{
+    // fn run(&mut self, _platform: &dyn Esp32Platform) -> anyhow::Result<()> {
+    //     let clock_renderer =
+    // }
+
+    fn name(&self) -> &str {
+        "Analog Clock"
+    }
+
+    fn run(&mut self, _platform: &mut Esp32Platform) -> anyhow::Result<()> {
+        self.clock_renderer.update()
+    }
+}

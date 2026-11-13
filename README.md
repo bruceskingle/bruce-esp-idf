@@ -1,5 +1,5 @@
-# sparko-embedded-std
-Sparko Embedded Std is a platform for embedded applications for hardware such as ESP32 SoC boards. This platform includes the standard Rust library which means that the heap and standard collections like ```Vec``` are all available for use. The platform currently supports, and was designed for, ESP32 boards and uses the ```esp-idf-hal``` and ```esp-idf-svc``` crates. It is possible that this platform will support other hardware architectures in the future (such as Raspberry PI boards) but for the time being it is ESP32 only.
+# bruce-esp-idf
+Bruce's ESP-IDF Platform: a platform for embedded applications on ESP32 boards, built on the hardware agnostic [bruce-embedded-std](https://github.com/bruceskingle/bruce-embedded-std), with a demo for each board. It includes the standard Rust library, which means that the heap and standard collections like ```Vec``` are all available for use, and uses the ```esp-idf-hal``` and ```esp-idf-svc``` crates. The platform is split in two, by one rule: bruce-embedded-std holds the hardware agnostic code, and this repository the code specific to ESP32 boards, see [Architecture](#architecture).
 
 # The Core Platform
 The core platform provides a set of services to support the running of one or more *Features*, which provide the application functionality. Each feature can be enabled or disabled and may have a configuration. The *Core Feature* provides WiFi and an HTTP server. If the *Core Feature* does not have a valid configuration (including the SSID and password for your WiFi network), then it will start WiFi an *Access Point Mode*. This means that it will create a new WiFi network (with the SSID **ESP32-Setup** and the password **password**) with a captive portal so that if you connect to this network you will be taken automatically to the config page so the necessary configuration values can be entered. Once this is done and the board is rebooted it will start WiFi in client mode, connecting to the WiFi network you have configured as a normal device.
@@ -10,7 +10,7 @@ The HTTP server is still available (on the IP address allocated by your WiFi net
 This is the sample application for the ESP32 DevKitV1 board:
 
 ```rust
-use sparko_esp_idf::{
+use bruce_esp_idf::{
     Esp32Platform,
     features::{binary_clock::BinaryClock, dyndns2::DynDns2},
 };
@@ -18,7 +18,7 @@ use sparko_esp_idf::{
 fn main() -> anyhow::Result<()> {
     let (builder, remainder) = Esp32Platform::builder()?;
 
-    let smart_leds = sparko_esp_idf::smart_led::new(
+    let smart_leds = bruce_esp_idf::smart_led::new(
         remainder.spi3,
         remainder.gpio14, //SCLK
         remainder.gpio13, //SDO / MISO
@@ -43,26 +43,28 @@ There are other approaches based on bare metal (non std) architecture (e.g. usin
 In a search for an alternative approach I came across the YouTube ```Floodplain``` channel (https://www.youtube.com/watch?v=o8yNNVFzNnM&t=9s) and based on that approach, and using the ```esp-idf-svc``` crate I was able to get WiFi working successfully. Binaries build on the standard library and using ```esp-idf-svc``` are larger than bare metal binaries, but I have not had any trouble running them on any ESP32 based board including the DevKitV1, and while this is not a pure Rust implementation (the ```esp-idf-``` crates are a thin Rust wrapper for the C based ESP IDF SDK) those underlying C implementations (especially the WiFi) are production tested mature implementations which I have found to work well.
 
 # Architecture
-This repo contains a number of library crates under the ```libs``` directory and a set of example binary crates under the ```examples``` directory:
+This repository has the library, ```bruce-esp-idf```, and an example binary crate for each board under ```boards```, each its own Cargo project, with its own target, as each board's chip needs its own:
 ```
-├── examples
-│   ├── cyd
-│   ├── devkitv1
-│   ├── supermini-esp32c3
-│   ├── wave-esp32c6147
-│   ├── wave-esp32c6touch147
-│   └── xiao-esp32c6
-└── libs
-    ├── sparko-embedded-std
-    │   └── examples
-    └── sparko-esp-idf
-
+├── boards
+│   ├── cyd-esp32-28
+│   ├── esp32-devkit-v1
+│   ├── esp32c3-supermini
+│   ├── guition-jc3248w535c
+│   ├── seeed-esp32c6-xiao
+│   ├── wave-esp32c6-lcd-147
+│   ├── wave-esp32c6-touch-147
+│   └── wave-esp32s3-rlcd-42
+└── bruce-esp-idf
 ```
-## sparko-embedded-std
-This crate contains pure rust code (without any ESP32 specific dependencies). This separation may become useful in the future when other hardware families are supported but for the time being is somewhat academic.
+The platform is two crates, in two repositories, divided by one rule: code which would work the same on any hardware with the standard library goes in [bruce-embedded-std](https://github.com/bruceskingle/bruce-embedded-std), and code which needs an ESP32, or ESP-IDF, goes in ```bruce-esp-idf```, here. ```bruce-esp-idf``` depends on ```bruce-embedded-std```, never the other way round. It takes bruce-embedded-std and [bruce-embedded-firmware-record](https://github.com/bruceskingle/bruce-embedded-firmware-record) from crates.io, or from checkouts next to this repository while they are linked to try changes to them, see bruce-method-release.
 
-## sparko-esp-idf
-This crate contains all platform code which is specific to the ESP-IDF based EAP32 implementation (as well as some code which arguably should be in ```sparko-embedded-std```). Support for various features of the platform is enabled via ```Cargo``` features
+## bruce-embedded-std
+The hardware agnostic platform: *Features* and their configuration, the config page, the task scheduler, time zones, graphics such as the clocks and the colours, the mDNS responder, the attitude and tilt worked out from an IMU's readings, and the traits a platform implements, e.g. ```Platform```, ```ConfigStore```, ```HttpServerManager``` and ```DisplayManager```. It has no ESP32 dependencies, so it builds, and its tests run, on a computer. It would be shared by a platform for other hardware, e.g. a Raspberry Pi running Linux.
+
+## bruce-esp-idf
+The ESP32 platform: everything which needs ESP-IDF, e.g. Wi-Fi, the HTTP server, NVS, the SD card, and the drivers for each board's hardware, implementing ```bruce-embedded-std```'s traits, with ```Esp32Platform``` and the *Features* which use it. Support for each board, and its hardware, is enabled with ```Cargo``` features.
+
+The device drivers here which use only one or two ESP-IDF types, e.g. ```shtc3.rs```'s ```I2cDriver```, are to become ```no_std``` crates of their own on the ```embedded-hal``` traits, usable on any hardware, rather than move into ```bruce-embedded-std```.
 
 # Design Patterns
 The platform makes use of the builder pattern as a way of trying to get the best trade off between the cost and benefits of the standard library. Most of the platform types have a builder containing collections which allow items to be added, but the ```build()``` method will usually call ```.shrink_to_fit()``` on those collections which are then treated as immutable from that point onwards.
@@ -87,22 +89,76 @@ The conventions for builders are that they
 ```
 - have methods which either return their result directly (if there are no failure scenarios) or return an ```anyhow::Result<>``` of their result.
 
-The following implementations are available which use this crate:
-- [sparko-esp-idf](https://github.com/bruceskingle/sparko-esp-idf) for ESP32 SoC based boards.
-
-Example applications for various boards are available at [sparko-embedded-examples](https://github.com/bruceskingle/sparko-embedded-example) on GitHub.
-
 # Features
-This crate uses multiple features to support various different ESP32 boards. There are functional features like ```mono-led``` and ```rgb-led``` which are referenced in the code and which get activated by board level features like ```board-cyd``` and ```board-xiao-esp32c6```. Client crates should normally select exactly one board feature and no others.
+This crate uses multiple features to support various different ESP32 boards. There are functional features like ```mono-led``` and ```rgb-led``` which are referenced in the code and which get activated by board level features like ```board-cyd-esp32-28``` and ```board-seeed-esp32c6-xiao```. Client crates should normally select exactly one board feature, and any of the optional hardware features (see below) which their board has and which they want to use.
+
+# Board Capabilities
+The platform drives the hardware a board always has itself, such as its display or status LED, and offers the hardware a project may or may not want, because its pins could be used for something else, as optional ```Cargo``` features. Setting one of these features gives that hardware's pins to the platform, so they are no longer in the ```Remainder```, and setting it for a board which does not have that hardware is a compile error.
+
+Two different things are called features here. A ```Cargo``` feature, such as ```key-button```, decides at compile time who owns some hardware. A *Feature*, such as ```AnalogClock```, is a piece of application functionality which can be enabled or disabled on the device's config page at run time.
+
+## Push Buttons
+A board's buttons are owned by the platform with features such as ```key-button``` and ```boot-button```. The platform watches each button from the start, and a press runs the button's *action*, if it has one, on the button's own thread, so an action may take its time, for example to show a message for a second. Presses while an action is running are not counted.
+
+The application gives a button its action with the builder. The closure is called with the platform once it is running, before the *Features* start, so that it can take what the action needs, such as the display manager:
+```rust
+let platform = builder
+    .with_key_button(|platform| {
+        let display_manager = platform.display_manager.clone();
+        Ok(Box::new(move || message::show(&display_manager, "KEY pressed")))
+    })
+    .build()?;
+```
+A *Feature* can take a button over when it starts, replacing the application's action, as it is given the platform:
+```rust
+fn start(&mut self, platform: &mut Esp32Platform, initializer: &mut Esp32PlatformInitializer, config: Self::Config) -> anyhow::Result<()> {
+    let display_manager = platform.display_manager.clone();
+    platform.key_button().set_action(Box::new(move || next_page(&display_manager)));
+    Ok(())
+}
+```
+```clear_action()``` makes a button do nothing again. A button wired to a pin of the ```Remainder``` works in the same way, with ```PushButton::new("Name", remainder.gpio4)?``` and then ```set_action()```. Buttons are taken to connect their pin to ground when pressed, using the chip's own pull-up, as board buttons usually do.
+
+## SD Cards
+With the ```sd-card``` feature the platform mounts the board's SD card at start-up, with FAT, at ```/sd```, so that it can be used with ```std::fs```. ```platform.sd_card()``` gives the mount point, or why there is no card, and ```sd_card::space()``` its size and free space. The card is only looked for at start-up, so a card put in later is found when the board next restarts.
+
+## Displays
+On a board with a display, ```platform.display_manager``` is the board's ```DisplayManager```, which *Features* draw with, using ```embedded-graphics```. On a black and white display (the ```mono-display``` feature) colours are drawn as ink or paper by their brightness, so that a design for a colour display, light on dark, comes out dark on light, and *Features* offer no colour settings.
+
+## Temperature and Humidity
+On a board with a temperature and humidity sensor, such as the SHTC3, ```platform.shtc3().read()``` gives a reading. The platform adds a *Feature* of its own, **Temperature and Humidity**, which logs a reading every minute and has a **Temperature Offset** setting, in tenths of a degree. A sensor on the board is warmed by it, so it reads high: set the offset by comparing with a thermometer which can be trusted, after the board has been running for a while. The humidity is corrected with it.
+
+## Speaker
+On a board with a speaker, ```platform.speaker()``` plays sounds: ```play_tone(880.0, Duration::from_millis(120))``` for a beep, or ```play_wav(bytes)``` for a WAV file of 16-bit PCM, of any sample rate, mono or stereo, which is mixed to mono and resampled to the speaker's 16 kHz. A sound can be built into the firmware with ```include_bytes!("../sounds/chime.wav")```, or read from the SD card. Each play waits until the sound has finished, so play from a thread of its own to carry on meanwhile. The platform adds a *Feature* of its own, **Speaker**, whose **Volume (%)** setting, a slider which plays a tone at each volume it is moved to, is what every sound plays at, from as soon as the board starts; 100% is the codec's full level, and each percent less is half a dB quieter.
+
+## Sliders
+A number setting can be shown on the config page as a slider, with ```#[config(min = 0, max = 100)]``` on an ```i32``` or ```i64``` field of a *Feature*'s config. ```default = N``` is where the slider is while the setting has not been saved, and ```preview = "/path"``` a path on the device which the page POSTs each position to, as ```value=N```, while the slider is moved, so that its effect can be tried before it is saved, as the speaker's volume is. A position is sent only once the last has been answered, so that a fast drag does not queue up requests.
+
+## Chip and Board
+The config page, and ```/api/info``` where the API is enabled, say which board the firmware was built for and the chip it is running on, read from the chip itself: its model, revision, cores, flash and PSRAM. The board cannot be read from the hardware, only the chip.
 
 
 # Development
-In order to avoid compiler errors during development one of the board features should be enabled in VSCode settings (file ```.vscode/settings.json``` in the workspace root) and when building on the command line release mode and one board feature should be selected e.g. ```cargo build --release --features board-cyd```
+The library compiles only for a board, so it is built through a board's crate, in ```boards```, e.g. ```cargo build --release``` in ```boards/seeed-esp32c6-xiao```, whose ```.cargo/config.toml``` has its target, ```MCU``` and ESP-IDF version.
+
+```bruce-esp-idf.code-workspace``` is a VS Code workspace for working on the platform: it opens this repository and the libraries next to it, and has a task and a launch configuration for building a board's firmware and flashing it with the flasher's window. rust-analyzer can check only one board's code at a time, as the code behind each board's features differs, so ```rust-analyzer.linkedProjects``` names the board to check, with the commented out lines for the others to switch to. It also lists repositories which are the author's own setup, e.g. Bruce's Smart Home: to look at this repository alone, comment out the folders which are not checked out next to it.
+
+# Building and Flashing
+Firmware built for the wrong board drives the wrong pins, and can damage it, so each firmware image carries a record of the board it was built for, the firmware and its version, which a board crate adds with ```.with_firmware(bruce_esp_idf::firmware!())```. It starts with the magic ```bruce-embedded-std firmware 1```, and the firmware logs it as it starts, with the device's ID, its Wi-Fi MAC.
+
+Flash with ```bruce-embedded-flash``` (from [bruce-embedded-flash](https://github.com/bruceskingle/bruce-embedded-flash), install it with ```cargo install --path bruce-embedded-flash``` in its checkout), never with espflash directly. Before it flashes, it reads the record from the new firmware and, over USB, from the firmware on the board, and flashes only if they are for the same board. If the board's firmware has no record, e.g. a new board, it asks which board it is, offering to restart it so that you can see which, and if it is for another board, or would replace other firmware, it refuses unless told otherwise. ```bruce-embedded-flash list``` lists the boards on USB without touching them, with what each was when last identified. The same checks are in a window, ```cargo run --features desktop``` in its ```bruce-embedded-flash-ui```, whose Dioxus component apps use to flash boards too, e.g. Bruce's Smart Home's Devices page.
+
+Firmware is kept in a folder shared by every app which flashes these boards, ```~/Library/Application Support/bruce-embedded-std/firmware/``` on macOS, by the GitHub repository it comes from and its version, e.g. ```bruce-esp-idf/0.1.0/``` (bruce-embedded-flash's ```bruce-embedded-firmware```). What is built here goes in ```bruce-esp-idf/dev/```:
+
+- ```cargo run --release``` in a board's directory builds its demo and flashes it, and its cargo runner, ```bruce-embedded-flash flash --monitor --keep-as bruce-esp-idf```, then copies it into ```bruce-esp-idf/dev/```, so the folder holds what was last flashed. A plain ```cargo build``` only builds into the board's ```target/```.
+- ```./build.sh``` builds every board's demo, or those named, e.g. ```./build.sh seeed-esp32c6-xiao```, and copies each into ```bruce-esp-idf/dev/```.
+
+Releases attach each board's firmware as an ELF file, and a repository with firmware has the GitHub topic ```bruce-embedded-firmware``` and a ```bruce-embedded-std.md``` in its root, whose first line, a heading, says what its firmware is, and the rest more about it. ```bruce-embedded-flash firmware find```, ```releases``` and ```download```, or Get Firmware in the window, find these repositories and download their releases into the shared folder.
 
 # Supported Boards
 The following boards are currently supported:
 
-## board-cyd
+## board-cyd-esp32-28
 The so called "Cheap Yellow Display" or more properly the **ESP32-2432S028R** is a 
 development board has become known in the maker community as the “Cheap Yellow Display” or CYD for short. This development board, whose main chip is an ESP32-WROOM-32 module, comes with
 
@@ -115,5 +171,19 @@ development board has become known in the maker community as the “Cheap Yellow
 Useful board information can be found at [Random Nerd Tutorials](https://randomnerdtutorials.com/?s=CYD)
 I have read that there are clones of this board which have slight differences, the one I developed on cam from [Ali Express](https://www.aliexpress.com/item/1005008229897039.html)
 
-## board-xiao-esp32c6
+## board-seeed-esp32c6-xiao
 This is the [Seed Studio XIAO ESP32-C6](https://www.seeedstudio.com/Seeed-Studio-XIAO-ESP32C6-p-5884.html) board which combines 2.4GHz Wi-Fi 6 (802.11ax), Bluetooth 5(LE), and IEEE 802.15.4 radio connectivity with a C6 processor.
+
+## board-wave-esp32s3-rlcd-42
+This is the [Waveshare ESP32-S3-RLCD-4.2](https://www.waveshare.com/product/esp32-related/boards-kits/esp32-s3/esp32-s3-rlcd-4.2.htm), whose ESP32-S3-WROOM-1-N16R8 module has two cores, 16 MB of flash and 8 MB of PSRAM, which the platform adds to the heap. It comes with
+
+- a 4.2-inch reflective LCD, 400 x 300, black and white, with an ST7305 controller, and no backlight: it is lit by the room, like e-paper, and readable in daylight. The outermost row and column of pixels on each edge are hidden by its frame, so the platform offers the 398 x 298 which can be seen. The example's **Edge Test** *Feature* draws a pattern to check this.
+- a microSD card slot, wired for SDMMC with one data line (the ```sd-card``` feature)
+- a KEY button (the ```key-button``` feature), and a BOOT button which, once the board has started, can be used as a button too (the ```boot-button``` feature)
+- an SHTC3 temperature and humidity sensor, which the platform always drives
+- an ES8311 audio codec and amplifier, with a connector for the speaker which comes with it, which the platform always drives
+- a PCF85063 real time clock, and two microphones, which the platform does not drive yet
+- a 2 x 8 pin, 2.54 mm header, with 3V3, VBUS, two grounds, and GPIO 0, 1, 2, 3, 17, 18, 19, 20, 43, 44, 13 and 14. GPIO 1, 2, 3 and 17 are free, in the ```Remainder```. 13 and 14 are the board's I2C bus, which more devices can join, using ```platform.i2c()```. 0 and 18 are the buttons, 19 and 20 the USB port, and 43 and 44 the console's UART, which the platform keeps
+- a holder for an 18650 lithium battery, with charging, and a PWR button which switches the battery's power. The battery is not supplied: an unprotected 18650, flat or button top, about 65 mm long, fits.
+
+There is no reset button: unplug it, use the config page's **Restart** command, or reset it over USB. The example application, in ```boards/wave-esp32s3-rlcd-42```, plays ```sounds/Startup.wav``` as it starts, and shows an analog clock, the SD card's size and free space when KEY is pressed, and the temperature and humidity when BOOT is pressed, each with a beep.

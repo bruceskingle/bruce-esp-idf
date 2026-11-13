@@ -141,7 +141,7 @@ dependencies = [
 
 [[package]]
 name = "bruce-esp-idf"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bruce-embedded-firmware-record",
@@ -168,7 +168,7 @@ dependencies = [
 
 [[package]]
 name = "bruce-esp-idf-example-esp32-devkit-v1"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bruce-embedded-std",

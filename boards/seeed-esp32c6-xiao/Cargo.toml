@@ -1,6 +1,6 @@
 [package]
 name = "bruce-esp-idf-example-seeed-esp32c6-xiao"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 resolver = "2"
 license = "MIT OR Apache-2.0"

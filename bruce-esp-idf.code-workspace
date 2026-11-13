@@ -149,6 +149,24 @@
 				},
 				"args": [],
 				"cwd": "${workspaceFolder:bruce-embedded-flash}/bruce-embedded-flash-ui"
+			},
+			{
+				// The stand alone flasher window, with whatever firmware is in the shared folder, e.g. the capture
+				// firmware built there by bruce-smart-home's capture/build-firmware.sh.
+				"type": "lldb",
+				"request": "launch",
+				"name": "Flasher",
+				"cargo": {
+					"args": [
+						"build",
+						"--manifest-path=${workspaceFolder:bruce-embedded-flash}/bruce-embedded-flash-ui/Cargo.toml",
+						"--features=desktop",
+						"--bin=bruce-embedded-flash-gui"
+					],
+					"filter": { "name": "bruce-embedded-flash-gui", "kind": "bin" }
+				},
+				"args": [],
+				"cwd": "${workspaceFolder:bruce-embedded-flash}/bruce-embedded-flash-ui"
 			}
 		]
 	}

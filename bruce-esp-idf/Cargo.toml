@@ -43,8 +43,8 @@ nalgebra = {version="0.34.2", optional = true}
 
 
 # The hardware agnostic platform, and the record each firmware image carries, from the repositories next to this one.
-bruce-embedded-std = { version = "0.1.0", path = "../../bruce-embedded-std/bruce-embedded-std" }
-bruce-embedded-firmware-record = { version = "0.1.0", path = "../../bruce-embedded-firmware-record" }
+bruce-embedded-std = "0.1.0"
+bruce-embedded-firmware-record = "0.1.0"
 
 [features]
 default = ["espidf"]

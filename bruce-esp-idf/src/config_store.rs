@@ -179,7 +179,7 @@ impl ConfigStore for EspConfigStore {
                     config_value,
                     self.nvs_namespace.get_str(name, &mut [0u8; TIMEZONE_LEN as usize]),
                 ) {
-                    if let Some(tz) = TimeZone::from_str(str) {
+                    if let Ok(tz) = str.parse::<TimeZone>() {
                         TypedValue::TimeZone(Some(tz))
                     } else {
                         TypedValue::TimeZone(None)

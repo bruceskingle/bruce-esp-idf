@@ -4,6 +4,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use crate::svc::http::Method;
+use crate::svc::http::client::EspHttpConnection;
 use bruce_embedded_std::config::ConfigSpec;
 use bruce_embedded_std::config::ConfigSpecValue;
 use bruce_embedded_std::config::FeatureConfig;
@@ -11,8 +13,6 @@ use bruce_embedded_std::config::TypedValue;
 use bruce_embedded_std::platform::PlatformInitializer;
 use bruce_embedded_std::task::scheduler::ScheduledTask;
 use croner::Cron;
-use esp_idf_svc::http::Method;
-use esp_idf_svc::http::client::EspHttpConnection;
 use log::info;
 
 use crate::Esp32Platform;
@@ -149,9 +149,9 @@ impl ResolveTask {
 
     fn get_public_ip_address(&mut self) -> anyhow::Result<IpAddr> {
         let mut http_client = embedded_svc::http::client::Client::wrap(EspHttpConnection::new(
-            &esp_idf_svc::http::client::Configuration {
+            &crate::svc::http::client::Configuration {
                 // use_global_ca_store: true,
-                crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+                crt_bundle_attach: Some(crate::sys::esp_crt_bundle_attach),
                 ..Default::default()
             },
         )?);
@@ -198,9 +198,9 @@ impl ResolveTask {
 
     fn get_ignore_response_body(&mut self, url: &str) -> anyhow::Result<()> {
         let mut http_client = embedded_svc::http::client::Client::wrap(EspHttpConnection::new(
-            &esp_idf_svc::http::client::Configuration {
+            &crate::svc::http::client::Configuration {
                 // use_global_ca_store: true,
-                crt_bundle_attach: Some(esp_idf_sys::esp_crt_bundle_attach),
+                crt_bundle_attach: Some(crate::sys::esp_crt_bundle_attach),
                 ..Default::default()
             },
         )?);

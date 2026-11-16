@@ -50,8 +50,8 @@ impl Core {
     fn set_as_system_timezone(time_zone: &TimeZone) {
         let tz = std::ffi::CString::new(time_zone.to_posix_tz()).unwrap();
         unsafe {
-            esp_idf_sys::setenv(b"TZ\0".as_ptr() as *const u8, tz.as_ptr(), 1);
-            esp_idf_sys::tzset();
+            crate::sys::setenv(b"TZ\0".as_ptr() as *const u8, tz.as_ptr(), 1);
+            crate::sys::tzset();
         }
         log::info!(
             "System timezone set to {} ({})",
@@ -99,8 +99,8 @@ impl ScheduledTask<Esp32Platform> for ResolveTask {
         let datetime = Local::now();
         info!("Time now: {}", datetime.format("%Y-%m-%d %H:%M:%S"));
 
-        let heap_free = unsafe { esp_idf_sys::esp_get_free_heap_size() };
-        let heap_min = unsafe { esp_idf_sys::esp_get_minimum_free_heap_size() };
+        let heap_free = unsafe { crate::sys::esp_get_free_heap_size() };
+        let heap_min = unsafe { crate::sys::esp_get_minimum_free_heap_size() };
         log::info!("heap free={} min={}", heap_free, heap_min);
 
         // TODO: force a reset if we run low on heap

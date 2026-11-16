@@ -1,13 +1,13 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
+use crate::svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use bruce_embedded_std::{
     config::{ConfigSpecValue, ConfigStore, ConfigStoreFactory, EnabledState, TypedValue, format_rgb8},
     problem::ProblemManager,
     tz::{TIMEZONE_LEN, TimeZone},
 };
 use croner::Cron;
-use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use log::info;
 
 use crate::core::CORE_FEATURE_NAME;
@@ -94,7 +94,7 @@ impl EspConfigStore {
         &self,
         name: &str,
         config_value: &mut ConfigSpecValue,
-        result: Result<Option<T>, esp_idf_sys::EspError>,
+        result: Result<Option<T>, crate::sys::EspError>,
     ) -> Option<T> {
         match result {
             Ok(opt_str) => {

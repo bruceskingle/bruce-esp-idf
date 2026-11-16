@@ -35,7 +35,7 @@ impl PushButton {
         let pressed_action = action.clone();
         std::thread::Builder::new()
             .name(format!("{name} button"))
-            .stack_size(4096)
+            .stack_size(bruce_embedded_std::thread_stack(4096))
             .spawn(move || {
                 let mut was_pressed = false;
                 loop {

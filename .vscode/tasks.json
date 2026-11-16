@@ -1,0 +1,24 @@
+{
+	// Things which only run a command, in a terminal. The debugging ones are in launch.json.
+	"version": "2.0.0",
+	"tasks": [
+		{
+			// Builds the RLCD's demo for the board simulator, see boards/sim.sh, for Simulator: RLCD Demo.
+			"label": "Simulator: Build RLCD Demo",
+			"type": "shell",
+			"command": "./boards/sim.sh --build wave-esp32s3-rlcd-42",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": ["$rustc"],
+			"presentation": { "reveal": "silent", "panel": "dedicated" }
+		},
+		{
+			// As Simulator: Build RLCD Demo, for the Guition JC3248W535C, the Guitron.
+			"label": "Simulator: Build Guitron Demo",
+			"type": "shell",
+			"command": "./boards/sim.sh --build guition-jc3248w535c",
+			"options": { "cwd": "${workspaceFolder}" },
+			"problemMatcher": ["$rustc"],
+			"presentation": { "reveal": "silent", "panel": "dedicated" }
+		}
+	]
+}

@@ -11,16 +11,25 @@ name = "bruce-esp-idf-example-wave-esp32s3-rlcd-42"
 harness = false # do not use the built-in cargo test harness -> resolve rust-analyzer errors
 
 [dependencies]
-# Remove `generic-queue-8` if you plan to use `embassy-time` WITH `embassy-executor`
-embassy-time = { version = "0.5", features = ["generic-queue-8"]}
-esp-idf-sys = { version = "0.37.2"}
 anyhow = "1.0.102"
 log = "0.4"
 
-bruce-embedded-std = "0.1.0"
-bruce-esp-idf = { path = "../../bruce-esp-idf", features = ["board-wave-esp32s3-rlcd-42", "boot-button", "key-button", "sd-card"]}
+bruce-embedded-std = "0.2.0"
+# Without its default, espidf, so that the sim feature can choose the simulator in its place, see [features].
+bruce-esp-idf = { path = "../../bruce-esp-idf", default-features = false, features = ["board-wave-esp32s3-rlcd-42", "boot-button", "key-button", "sd-card"]}
 embedded-graphics = "0.8"
 
+# Only for the ESP32, not for the simulator.
+[target.'cfg(target_os = "espidf")'.dependencies]
+# Remove `generic-queue-8` if you plan to use `embassy-time` WITH `embassy-executor`
+embassy-time = { version = "0.5", features = ["generic-queue-8"]}
+esp-idf-sys = { version = "0.37.2"}
+
+[features]
+default = ["espidf"]
+espidf = ["bruce-esp-idf/espidf"]
+# The example on a desktop computer, in the board simulator, in place of espidf: ../sim.sh runs it.
+sim = ["bruce-esp-idf/sim"]
 
 [build-dependencies]
 embuild = "0.33"

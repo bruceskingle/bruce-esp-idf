@@ -18,12 +18,12 @@
 
 use std::sync::Arc;
 
+use crate::svc::http::Method;
+use crate::svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
+use crate::svc::io::Write;
+use crate::svc::nvs::{EspNvsPartition, NvsDefault};
+use crate::svc::tls::X509;
 use bruce_embedded_std::config_manager::ConfigManager;
-use esp_idf_svc::http::Method;
-use esp_idf_svc::http::server::{Configuration, EspHttpConnection, EspHttpServer, Request};
-use esp_idf_svc::io::Write;
-use esp_idf_svc::nvs::{EspNvsPartition, NvsDefault};
-use esp_idf_svc::tls::X509;
 use log::info;
 use serde_json::{Value, json};
 
@@ -168,10 +168,12 @@ impl ApiServer {
             respond(request, 200, &json!({ "restarting": true }))?;
             // After the response has gone.
             // A small stack, as the default may not fit in the RAM which is left.
-            std::thread::Builder::new().stack_size(4096).spawn(|| {
-                std::thread::sleep(std::time::Duration::from_secs(1));
-                unsafe { esp_idf_sys::esp_restart() };
-            })?;
+            std::thread::Builder::new()
+                .stack_size(bruce_embedded_std::thread_stack(4096))
+                .spawn(|| {
+                    std::thread::sleep(std::time::Duration::from_secs(1));
+                    unsafe { crate::sys::esp_restart() };
+                })?;
             Ok::<(), anyhow::Error>(())
         })?;
 
@@ -255,19 +257,19 @@ fn info(identity: &DeviceIdentity, config_manager: &ConfigManager, adoption: &Ad
     json!({
         "id": identity.id,
         "hostname": config_manager.value(crate::core::CORE_FEATURE_NAME, "mdns_hostname"),
-        "board": crate::board_name(),
+        "board": crate::reported_board_name(),
         // The chip, as it says it is, whichever board the firmware was built for.
         "chip": crate::chip::chip().to_json(),
         "firmware": { "name": firmware.name, "version": firmware.version },
         "platform": { "name": env!("CARGO_PKG_NAME"), "version": env!("CARGO_PKG_VERSION") },
         "certificateFingerprint": identity.fingerprint,
         "adopted": adoption.is_adopted(),
-        "upTimeSeconds": unsafe { esp_idf_sys::esp_timer_get_time() } / 1_000_000,
+        "upTimeSeconds": unsafe { crate::sys::esp_timer_get_time() } / 1_000_000,
         "resetReason": crate::reset_reason(),
         "lastCrash": crate::panics::last(),
-        "freeHeap": unsafe { esp_idf_sys::esp_get_free_heap_size() },
-        "minimumFreeHeap": unsafe { esp_idf_sys::esp_get_minimum_free_heap_size() },
-        "largestFreeBlock": unsafe { esp_idf_sys::heap_caps_get_largest_free_block(esp_idf_sys::MALLOC_CAP_DEFAULT) },
+        "freeHeap": unsafe { crate::sys::esp_get_free_heap_size() },
+        "minimumFreeHeap": unsafe { crate::sys::esp_get_minimum_free_heap_size() },
+        "largestFreeBlock": unsafe { crate::sys::heap_caps_get_largest_free_block(crate::sys::MALLOC_CAP_DEFAULT) },
         "failedAllocations": crate::panics::failed_allocations(),
         "features": features,
     })

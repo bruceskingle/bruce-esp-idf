@@ -38,6 +38,7 @@ impl Feature for ScreenSettings {
 }
 
 /// Whether config says to keep the screen on, true if it is not set.
+#[cfg_attr(feature = "sim", allow(dead_code))]
 pub(crate) fn on(config: &ScreenConfig) -> bool {
     !config.off.unwrap_or(false)
 }

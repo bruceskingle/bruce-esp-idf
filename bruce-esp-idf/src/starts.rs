@@ -12,8 +12,8 @@
 
 use std::sync::OnceLock;
 
+use crate::svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use chrono::{SecondsFormat, TimeDelta, Utc};
-use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use log::{info, warn};
 use serde_json::value::RawValue;
 use serde_json::{Value, json};
@@ -51,7 +51,7 @@ pub fn count(nvs_partition: &EspNvsPartition<NvsDefault>) {
 /// This start, as it is logged: when the device started, why, its number, see count, the firmware, and how long it
 /// took to get the time, after which the device can do anything useful.
 fn this_start(firmware: Firmware) -> Value {
-    let up_time = TimeDelta::microseconds(unsafe { esp_idf_sys::esp_timer_get_time() });
+    let up_time = TimeDelta::microseconds(unsafe { crate::sys::esp_timer_get_time() });
     json!({
         "time": (Utc::now() - up_time).to_rfc3339_opts(SecondsFormat::Secs, true),
         "reason": crate::reset_reason(),

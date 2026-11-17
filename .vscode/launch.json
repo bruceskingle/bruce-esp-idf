@@ -1,0 +1,32 @@
+{
+    // The boards' demos in the board simulator on this computer, see boards/sim.sh and bruce-embedded-std's
+    // docs/Simulator.md, run under the debugger, so that breakpoints in the platform and the demos stop. Each keeps its
+    // data in the simulator's usual folder for it, its settings and its identity, between runs.
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Simulator: RLCD Demo",
+            "presentation": { "group": "Simulator", "order": 1 },
+            "preLaunchTask": "Simulator: Build RLCD Demo",
+            "program": "${workspaceFolder}/boards/wave-esp32s3-rlcd-42/target/sim/demo",
+            "windows": { "program": "${workspaceFolder}/boards/wave-esp32s3-rlcd-42/target/sim/demo.exe" },
+            "args": [],
+            "cwd": "${workspaceFolder}/boards/wave-esp32s3-rlcd-42",
+            "env": { "RUST_BACKTRACE": "1" }
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Simulator: Guitron Demo",
+            "presentation": { "group": "Simulator", "order": 2 },
+            "preLaunchTask": "Simulator: Build Guitron Demo",
+            "program": "${workspaceFolder}/boards/guition-jc3248w535c/target/sim/demo",
+            "windows": { "program": "${workspaceFolder}/boards/guition-jc3248w535c/target/sim/demo.exe" },
+            "args": [],
+            "cwd": "${workspaceFolder}/boards/guition-jc3248w535c",
+            "env": { "RUST_BACKTRACE": "1" }
+        }
+    ]
+}

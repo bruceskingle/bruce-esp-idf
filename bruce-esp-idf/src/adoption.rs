@@ -18,9 +18,9 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use crate::svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use anyhow::{anyhow, bail};
 use bruce_embedded_std::config_manager::ConfigManager;
-use esp_idf_svc::nvs::{EspNvs, EspNvsPartition, NvsDefault};
 use log::{info, warn};
 
 use crate::identity::DEVICE_NAMESPACE;
@@ -34,6 +34,7 @@ const SIGNATURE_WINDOW: i64 = 5 * 60;
 /// What a signed request's Authorization header starts with, see is_signed.
 pub const SIGNATURE_SCHEME: &str = "Bruce-HMAC-SHA256 ";
 /// How long the BOOT button must be held to release the device.
+#[cfg(not(feature = "sim"))]
 const RELEASE_HOLD: Duration = Duration::from_secs(5);
 /// How long the screen says the device has been adopted or released, see AdoptionOverlay.
 const NOTICE_TIME: Duration = Duration::from_secs(5);
@@ -144,7 +145,7 @@ impl Adoption {
             bail!("the device has already been adopted, release it first");
         }
         let mut random = [0u8; 4];
-        unsafe { esp_idf_sys::esp_fill_random(random.as_mut_ptr() as *mut _, random.len()) };
+        unsafe { crate::sys::esp_fill_random(random.as_mut_ptr() as *mut _, random.len()) };
         let code = format!("{:06}", u32::from_le_bytes(random) % 1_000_000);
         state.pairing = Some(Pairing {
             code,
@@ -225,29 +226,32 @@ impl Adoption {
 }
 
 /// Releases the device when the BOOT button is held down for RELEASE_HOLD, in a thread of its own, so that it works
-/// whatever else the device is doing, in AP mode too.
+/// whatever else the device is doing, in AP mode too. Not for the simulator, as only the CYD's platform uses it.
+#[cfg(not(feature = "sim"))]
 pub fn watch_boot_button(
     adoption: Arc<Adoption>,
     pin: impl esp_idf_hal::gpio::InputPin + 'static,
 ) -> anyhow::Result<()> {
     let button = esp_idf_hal::gpio::PinDriver::input(pin, esp_idf_hal::gpio::Pull::Up)?;
-    std::thread::Builder::new().stack_size(4096).spawn(move || {
-        let mut pressed_since: Option<Instant> = None;
-        loop {
-            std::thread::sleep(Duration::from_millis(100));
-            if button.is_low() {
-                let since = *pressed_since.get_or_insert_with(Instant::now);
-                if since.elapsed() >= RELEASE_HOLD && adoption.is_adopted() {
-                    info!("BOOT held for {} seconds, releasing the device", RELEASE_HOLD.as_secs());
-                    if let Err(error) = adoption.release() {
-                        log::error!("Unable to release the device, {error:#}");
+    std::thread::Builder::new()
+        .stack_size(bruce_embedded_std::thread_stack(4096))
+        .spawn(move || {
+            let mut pressed_since: Option<Instant> = None;
+            loop {
+                std::thread::sleep(Duration::from_millis(100));
+                if button.is_low() {
+                    let since = *pressed_since.get_or_insert_with(Instant::now);
+                    if since.elapsed() >= RELEASE_HOLD && adoption.is_adopted() {
+                        info!("BOOT held for {} seconds, releasing the device", RELEASE_HOLD.as_secs());
+                        if let Err(error) = adoption.release() {
+                            log::error!("Unable to release the device, {error:#}");
+                        }
                     }
+                } else {
+                    pressed_since = None;
                 }
-            } else {
-                pressed_since = None;
             }
-        }
-    })?;
+        })?;
     Ok(())
 }
 
@@ -378,6 +382,13 @@ impl<DM: bruce_embedded_std::graphics::DisplayManager>
         if shown == self.shown {
             return Ok(());
         }
+        // In the simulator, the code is what the user copies while it is shown, to paste into the app, rather than the
+        // device's address, see bruce-embedded-sim's Device::set_copyable.
+        #[cfg(feature = "sim")]
+        crate::sim::device().set_copyable(match &shown {
+            Some(Shown::Pairing(code, _)) => Some(("pairing code", code.clone())),
+            _ => None,
+        });
         match &shown {
             Some(Shown::Pairing(code, seconds)) => {
                 // Only the countdown, unless the code is new.

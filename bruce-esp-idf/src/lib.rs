@@ -5,34 +5,60 @@ use bruce_embedded_std::{
     feature::FeatureDescriptor,
 };
 
+#[cfg(feature = "sim")]
+pub use bruce_embedded_sim::svc;
+#[cfg(feature = "sim")]
+pub use bruce_embedded_sim::svc::sys;
+/// ESP-IDF's services and C API, or, with the sim feature, the simulator's stand-ins for them under the same names, so
+/// that the code which uses them compiles on a computer as it is, see sim/mod.rs and bruce-embedded-std's
+/// docs/Simulator.md.
+#[cfg(not(feature = "sim"))]
+pub use esp_idf_svc as svc;
+#[cfg(not(feature = "sim"))]
+pub use esp_idf_sys as sys;
+
+/// The platform on a desktop computer, see sim/mod.rs.
+#[cfg(feature = "sim")]
+pub(crate) mod sim;
+
+#[cfg_attr(feature = "sim", path = "sim/platform.rs")]
 mod esp32_platform;
 pub use esp32_platform::*;
 
 #[cfg(esp_idf_esp_https_server_enable)]
 pub mod api;
 #[cfg(feature = "battery")]
+#[cfg_attr(feature = "sim", path = "sim/battery.rs")]
 pub mod battery;
+#[cfg_attr(feature = "sim", path = "sim/chip.rs")]
 pub mod chip;
+#[cfg_attr(feature = "sim", path = "sim/push_button.rs")]
 pub mod push_button;
 #[cfg(feature = "sd-card")]
+#[cfg_attr(feature = "sim", path = "sim/sd_card.rs")]
 pub mod sd_card;
 #[cfg(feature = "shtc3")]
+#[cfg_attr(feature = "sim", path = "sim/shtc3.rs")]
 pub mod shtc3;
 #[cfg(feature = "speaker")]
+#[cfg_attr(feature = "sim", path = "sim/speaker.rs")]
 pub mod speaker;
 
 #[cfg(esp_idf_esp_https_server_enable)]
 pub mod adoption;
 #[cfg(esp_idf_esp_https_server_enable)]
+#[cfg_attr(feature = "sim", path = "sim/identity.rs")]
 mod identity;
 #[cfg(esp_idf_esp_https_server_enable)]
+#[cfg_attr(feature = "sim", path = "sim/memory.rs")]
 mod memory;
+#[cfg_attr(feature = "sim", path = "sim/panics.rs")]
 pub mod panics;
 mod starts;
 
 /// The display's SPI device, on a bus which lives as long as the device, so that other devices can share it, e.g. the
 /// SD card slot of the Waveshare ESP32-C6-Touch-LCD-1.47, see sd_card.rs.
-#[cfg(any(feature = "mipi-dsi-display", feature = "display-st7305"))]
+#[cfg(all(any(feature = "mipi-dsi-display", feature = "display-st7305"), not(feature = "sim")))]
 pub type DisplaySpi = esp_idf_hal::spi::SpiDeviceDriver<'static, &'static esp_idf_hal::spi::SpiDriver<'static>>;
 
 pub use bruce_embedded_firmware_record::FirmwareRecord;
@@ -51,6 +77,7 @@ pub struct Firmware {
 /// The Firmware of the crate it is called in, its name and version, built for the board its `board-*` feature
 /// chooses, with the record of them a flasher reads before flashing, placed by the linker at the start of the image,
 /// e.g. `Esp32Platform::builder()...with_firmware(bruce_esp_idf::firmware!())`.
+#[cfg(not(feature = "sim"))]
 #[macro_export]
 macro_rules! firmware {
     () => {{
@@ -68,7 +95,41 @@ macro_rules! firmware {
     }};
 }
 
+/// The Firmware of the crate it is called in, for the simulator, which has no image for a record to be placed in.
+#[cfg(feature = "sim")]
+#[macro_export]
+macro_rules! firmware {
+    () => {{
+        $crate::Firmware {
+            name: env!("CARGO_PKG_NAME"),
+            version: env!("CARGO_PKG_VERSION"),
+            record: None,
+        }
+    }};
+}
+
+/// The board's name as the device reports it to an app, see api.rs: board_name, with -sim after it in the simulator,
+/// e.g. wave-esp32s3-rlcd-42-sim, so that a simulated device is told apart from a real one wherever it is shown.
+pub fn reported_board_name() -> String {
+    if SIMULATED {
+        format!("{}-sim", board_name())
+    } else {
+        board_name().to_string()
+    }
+}
+
+/// Whether this is the platform on a computer, in the board simulator, see sim/mod.rs, e.g. for firmware to say that a
+/// board has no battery, rather than that it cannot be read.
+pub const SIMULATED: bool = cfg!(feature = "sim");
+
+/// Why the simulated device last started: it is started like a device which is powered on.
+#[cfg(feature = "sim")]
+pub fn reset_reason() -> &'static str {
+    "PowerOn"
+}
+
 /// Why the device last started, e.g. Panic, or Brownout, which shows power dips, as /api/info says, see api.rs.
+#[cfg(not(feature = "sim"))]
 pub fn reset_reason() -> &'static str {
     #[allow(non_upper_case_globals)]
     match unsafe { esp_idf_sys::esp_reset_reason() } {
@@ -127,16 +188,21 @@ pub const fn board_name() -> &'static str {
 
 mod commands;
 mod config_store;
+#[cfg_attr(feature = "sim", path = "sim/core.rs")]
 mod core;
 pub mod features;
 mod http;
 #[cfg(feature = "led")]
 mod led;
+#[cfg(not(feature = "sim"))]
 mod portal;
+#[cfg(not(feature = "sim"))]
 pub mod smart_led;
+#[cfg(not(feature = "sim"))]
 mod wifi;
 // pub mod led_strip;
 #[cfg(feature = "touch-driver")]
+#[cfg_attr(feature = "sim", path = "sim/touch.rs")]
 pub mod touch;
 
 /// The attitude and tilt, from bruce-embedded-std, and the IMU chips the boards have, which give it their readings.
@@ -147,6 +213,7 @@ pub mod ahrs {
 }
 
 #[cfg(feature = "display")]
+#[cfg_attr(feature = "sim", path = "sim/display.rs")]
 mod display;
 /// The board's display manager, the type of Esp32Platform::display_manager, for features outside the platform.
 #[cfg(feature = "display")]

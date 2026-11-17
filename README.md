@@ -155,6 +155,11 @@ Firmware is kept in a folder shared by every app which flashes these boards, ```
 
 Releases attach each board's firmware as an ELF file, and a repository with firmware has the GitHub topic ```bruce-embedded-firmware``` and a ```bruce-embedded-std.md``` in its root, whose first line, a heading, says what its firmware is, and the rest more about it. ```bruce-embedded-flash firmware find```, ```releases``` and ```download```, or Get Firmware in the window, find these repositories and download their releases into the shared folder.
 
+# The Board Simulator
+Firmware for a board which bruce-embedded-std's board simulator can simulate, so far ```board-wave-esp32s3-rlcd-42``` and ```board-guition-jc3248w535c```, also runs on a computer, with the ```sim``` feature in place of the default, ```espidf```: the board's screen is shown in a window, framed by the board, its buttons are clicked, and its touch screen is dragged on. See bruce-embedded-std's ```docs/Simulator.md```. ```boards/sim.sh <board>``` runs a board's demo in it, with the stable toolchain and the computer's own target, e.g. ```boards/sim.sh guition-jc3248w535c```.
+
+The platform's code compiles for the computer as it is: it uses ESP-IDF's services and C API as ```crate::svc``` and ```crate::sys```, which are ```esp_idf_svc``` and ```esp_idf_sys``` on an ESP32, and the simulator's stand-ins for them, under the same names, with ```sim```. Only what is truly ESP-IDF's has a twin for the computer, in ```src/sim/```, chosen with ```#[cfg_attr(feature = "sim", path = ...)]```: the platform itself, which needs no Wi-Fi or setup portal, the core feature without its Wi-Fi settings, the identity, the buttons, the touch screen, the display and the speaker. Sensors a simulated board has none of read nothing. A thread's stack is given with ```bruce_embedded_std::thread_stack```, the device's size on an ESP32 and enough for a computer elsewhere.
+
 # Supported Boards
 The following boards are currently supported:
 

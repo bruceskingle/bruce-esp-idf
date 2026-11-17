@@ -1048,6 +1048,13 @@ impl Esp32PlatformBuilder {
         Ok(self)
     }
 
+    /// Adds a feature which is always enabled, as the platform's own are, e.g. one the firmware's screen is laid out
+    /// for, such as a capture device's clock, so that it is not missing from a new device until it is enabled.
+    pub fn with_required_feature(mut self, feature: Box<dyn DynFeature>) -> anyhow::Result<Self> {
+        self.internal_add_feature(feature, true)?;
+        Ok(self)
+    }
+
     /// Makes the board's KEY button run the action on_start makes, called with the platform once it is running, before
     /// the features start, so that it can take what the action needs, e.g. the display manager. A feature can set the
     /// button's action too, see Esp32Platform::key_button.
@@ -1600,6 +1607,12 @@ impl Esp32Platform {
     /// set up yet can show where to find it.
     pub fn ip_address(&self) -> Option<Ipv4Addr> {
         self.ip_address
+    }
+
+    /// The address an app reaches the device at, its IP address, None until it has one, as on the simulator, whose
+    /// address has its port too, see the simulator's platform.
+    pub fn address(&self) -> Option<String> {
+        self.ip_address.map(|address| address.to_string())
     }
 
     /// Whether the device has been adopted by an app, see adoption.rs.

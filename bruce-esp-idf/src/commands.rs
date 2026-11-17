@@ -79,12 +79,14 @@ impl Commands for EspCommands {
                 )?;
 
                 // A small stack, as the default may not fit in the RAM which is left.
-                std::thread::Builder::new().stack_size(4096).spawn(|| {
-                    std::thread::sleep(std::time::Duration::from_secs(2));
-                    unsafe {
-                        esp_idf_sys::esp_restart();
-                    }
-                })?;
+                std::thread::Builder::new()
+                    .stack_size(bruce_embedded_std::thread_stack(4096))
+                    .spawn(|| {
+                        std::thread::sleep(std::time::Duration::from_secs(2));
+                        unsafe {
+                            crate::sys::esp_restart();
+                        }
+                    })?;
             }
             Some("factory_reset") => {
                 info!("Factory reset command received, erasing config and restarting...");
@@ -99,12 +101,14 @@ impl Commands for EspCommands {
                     )?;
 
                     // A small stack, as the default may not fit in the RAM which is left.
-                    std::thread::Builder::new().stack_size(4096).spawn(|| {
-                        std::thread::sleep(std::time::Duration::from_secs(2));
-                        unsafe {
-                            esp_idf_sys::esp_restart();
-                        }
-                    })?;
+                    std::thread::Builder::new()
+                        .stack_size(bruce_embedded_std::thread_stack(4096))
+                        .spawn(|| {
+                            std::thread::sleep(std::time::Duration::from_secs(2));
+                            unsafe {
+                                crate::sys::esp_restart();
+                            }
+                        })?;
                 }
             }
             Some(cmd) => {

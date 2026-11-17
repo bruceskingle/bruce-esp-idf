@@ -1,3 +1,5 @@
+// Not for the simulator: it drives smart LEDs, which a simulated board has none of.
+#[cfg(not(feature = "sim"))]
 pub mod binary_clock;
 pub mod dyndns2;
 #[cfg(any(feature = "display-axs15231b", feature = "mipi-dsi-display"))]

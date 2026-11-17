@@ -3,9 +3,11 @@
 
 use std::time::Duration;
 
+use crate::svc::http::Method;
 use bruce_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
-use esp_idf_svc::http::Method;
-use esp_idf_svc::io::Read;
+// Not needed with the simulator's Request, whose read is its own.
+#[cfg_attr(feature = "sim", allow(unused_imports))]
+use crate::svc::io::Read;
 use log::warn;
 
 use crate::http::EspHttpServerManager;

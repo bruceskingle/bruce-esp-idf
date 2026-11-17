@@ -1,10 +1,10 @@
 use std::{io::Write, sync::Arc};
 
-use bruce_embedded_std::http_server::{HttpMethod, HttpServerManager};
-use esp_idf_svc::http::{
+use crate::svc::http::{
     Method,
     server::{EspHttpConnection, EspHttpServer},
 };
+use bruce_embedded_std::http_server::{HttpMethod, HttpServerManager};
 use indexmap::IndexMap;
 use log::info;
 use url::form_urlencoded;
@@ -40,7 +40,7 @@ fn to_esp_method(http_method: HttpMethod) -> Method {
 }
 
 pub struct WriteWrapper<'r, 'c> {
-    pub resp: esp_idf_svc::http::server::Response<&'r mut EspHttpConnection<'c>>,
+    pub resp: crate::svc::http::server::Response<&'r mut EspHttpConnection<'c>>,
 }
 
 impl<'r, 'c> std::io::Write for WriteWrapper<'r, 'c> {
@@ -72,7 +72,7 @@ fn is_online(ap_mode: &Arc<std::sync::Mutex<bool>>) -> bool {
 impl EspHttpServerManager<'_> {
     pub fn new() -> anyhow::Result<Self> {
         // 6 KB is enough without TLS, but the default is 10 KB when HTTPS is enabled, for the API, see api.rs.
-        let server = EspHttpServer::new(&esp_idf_svc::http::server::Configuration {
+        let server = EspHttpServer::new(&crate::svc::http::server::Configuration {
             stack_size: 6144,
             ..Default::default()
         })?;
@@ -81,7 +81,7 @@ impl EspHttpServerManager<'_> {
 
     pub fn on<F>(&mut self, uri: &str, method: Method, f: F) -> anyhow::Result<&mut Self>
     where
-        F: for<'r> Fn(esp_idf_svc::http::server::Request<&mut EspHttpConnection<'r>>) -> anyhow::Result<()>
+        F: for<'r> Fn(crate::svc::http::server::Request<&mut EspHttpConnection<'r>>) -> anyhow::Result<()>
             + Send
             + 'static,
     {

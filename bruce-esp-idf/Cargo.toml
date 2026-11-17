@@ -1,6 +1,6 @@
 [package]
 name = "bruce-esp-idf"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Bruce's ESP-IDF Platform: bruce-embedded-std on ESP32 boards, with Wi-Fi, an HTTP server, settings in NVS and drivers for each board's hardware"
@@ -43,11 +43,23 @@ nalgebra = {version="0.34.2", optional = true}
 
 
 # The hardware agnostic platform, and the record each firmware image carries, from the repositories next to this one.
-bruce-embedded-std = "0.1.0"
+bruce-embedded-std = "0.2.0"
 bruce-embedded-firmware-record = "0.1.0"
+
+# The platform on a desktop computer, with the sim feature, see src/sim/mod.rs: the simulated board, its HTTPS
+# certificate, its log, and the folder it keeps its data in.
+bruce-embedded-sim = { version = "0.2.0", features = ["svc"], optional = true }
+rcgen = { version = "0.13", default-features = false, features = ["ring", "pem"], optional = true }
+rustls-pki-types = { version = "1", features = ["std"], optional = true }
+env_logger = { version = "0.11", optional = true }
+dirs = { version = "6", optional = true }
+iana-time-zone = { version = "0.1", optional = true }
 
 [features]
 default = ["espidf"]
+# The platform on a desktop computer, in place of espidf, with a board's feature, for a board bruce-embedded-sim can
+# simulate: board-wave-esp32s3-rlcd-42 or board-guition-jc3248w535c. See bruce-embedded-std's docs/Simulator.md.
+sim = ["dep:bruce-embedded-sim", "embedded-svc", "dep:rcgen", "dep:rustls-pki-types", "dep:env_logger", "dep:dirs", "dep:iana-time-zone"]
 #default = ["espidf", "board-seeed-esp32c6-xiao"]
 #espidf = ["esp-idf-svc", "embassy-time", "embedded-svc", "esp-idf-hal", "esp-idf-sys", "futures", "embuild"]
 espidf = [
@@ -103,4 +115,5 @@ touch = []                              # Touch input. Requires touch-driver har
 
 [build-dependencies]
 #embuild = { version = "0.33", optional = true }
-embuild = "0.33"
+# With espidf, which esp-idf-sys turns on for an ESP32's build, and build.rs needs for the simulator's too.
+embuild = { version = "0.33", features = ["espidf"] }

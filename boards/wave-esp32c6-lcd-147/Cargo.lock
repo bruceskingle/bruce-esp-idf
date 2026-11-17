@@ -111,9 +111,9 @@ checksum = "c5880821c9abff5fc57482b0a702e8b472af04c7eef60ff9bdbdbeb809f48858"
 
 [[package]]
 name = "bruce-embedded-std"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f556999b2e167f80b350901e15d567af2ce94e82cfe451088afc2e5a7ec50cc"
+checksum = "80fa07843ddf73435e951d5034b681a2df06bfd71577020b2d3313587cd6ba40"
 dependencies = [
  "anyhow",
  "bruce-embedded-std-derive",
@@ -126,13 +126,14 @@ dependencies = [
  "rgb",
  "serde_json",
  "simple-dns",
+ "socket2",
 ]
 
 [[package]]
 name = "bruce-embedded-std-derive"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2c5d32a3671aba9384bcd7d00b5628343e146cdaf367012e535f14b7d638d6ce"
+checksum = "510948fb48644a6bf9bdb3ffac1ce14ef873cd6a915bfa748166c5e1099127d9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -141,7 +142,7 @@ dependencies = [
 
 [[package]]
 name = "bruce-esp-idf"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bruce-embedded-firmware-record",
@@ -169,7 +170,7 @@ dependencies = [
 
 [[package]]
 name = "bruce-esp-idf-example-wave-esp32c6-lcd-147"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "bruce-embedded-std",
@@ -1834,6 +1835,16 @@ name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
+
+[[package]]
+name = "socket2"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
+dependencies = [
+ "libc",
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "stable_deref_trait"

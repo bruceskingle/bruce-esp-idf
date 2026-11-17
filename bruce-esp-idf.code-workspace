@@ -52,16 +52,17 @@
 			// "target": true
 		},
 		"rust-analyzer.linkedProjects": [
-			// "boards/wave-esp32c6-touch-147/Cargo.toml",
-			// "boards/cyd-esp32-28/Cargo.toml",
-			"boards/esp32-devkit-v1/Cargo.toml",
-			// "boards/esp32c3-supermini/Cargo.toml",
-			// "boards/wave-esp32c6-lcd-147/Cargo.toml",
-			// "boards/wave-esp32c6-touch-147/Cargo.toml",
-			// "boards/seeed-esp32c6-xiao/Cargo.toml",
+			// Each from the first folder, bruce-smart-home, as rust-analyzer takes a relative path in a workspace of several.
+			// "../bruce-esp-idf/boards/wave-esp32c6-touch-147/Cargo.toml",
+			// "../bruce-esp-idf/boards/cyd-esp32-28/Cargo.toml",
+			"../bruce-esp-idf/boards/esp32-devkit-v1/Cargo.toml",
+			// "../bruce-esp-idf/boards/esp32c3-supermini/Cargo.toml",
+			// "../bruce-esp-idf/boards/wave-esp32c6-lcd-147/Cargo.toml",
+			// "../bruce-esp-idf/boards/wave-esp32c6-touch-147/Cargo.toml",
+			// "../bruce-esp-idf/boards/seeed-esp32c6-xiao/Cargo.toml",
 			"../bruce-embedded-std/Cargo.toml", // This is needed
 			"../bruce-smart-home/Cargo.toml",
-			// "bruce-esp-idf/Cargo.toml", this causes weird errors but I dont understand why
+			// "../bruce-esp-idf/bruce-esp-idf/Cargo.toml", this causes weird errors but I dont understand why
 		],
 		// // "rust-analyzer.cargo.features": "all",
 		// // "rust-analyzer.cargo.features": ["board-seeed-esp32c6-xiao"],

@@ -43,12 +43,12 @@ nalgebra = {version="0.34.2", optional = true}
 
 
 # The hardware agnostic platform, and the record each firmware image carries, from the repositories next to this one.
-bruce-embedded-std = { version = "0.2.0", path = "../../bruce-embedded-std/bruce-embedded-std" }
+bruce-embedded-std = "0.2.0"
 bruce-embedded-firmware-record = "0.1.0"
 
 # The platform on a desktop computer, with the sim feature, see src/sim/mod.rs: the simulated board, its HTTPS
 # certificate, its log, and the folder it keeps its data in.
-bruce-embedded-sim = { version = "0.2.0", path = "../../bruce-embedded-std/bruce-embedded-sim", features = ["svc"], optional = true }
+bruce-embedded-sim = { version = "0.2.0", features = ["svc"], optional = true }
 rcgen = { version = "0.13", default-features = false, features = ["ring", "pem"], optional = true }
 rustls-pki-types = { version = "1", features = ["std"], optional = true }
 env_logger = { version = "0.11", optional = true }

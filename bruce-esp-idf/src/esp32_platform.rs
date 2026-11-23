@@ -221,6 +221,38 @@ pub struct Remainder {
     pub rmt: esp_idf_hal::rmt::RMT,
 }
 
+/// The Waveshare ESP32-S3-LCD-1.47B, whose on-board hardware uses: the display (GPIO39 reset, 40 SCLK, 41 DC, 42 CS,
+/// 45 MOSI, 46 backlight), the SD card (14, 15, 16, 17, 18, 21), the QMI8658 IMU's I2C bus (47 SCL, 48 SDA, on I2C0)
+/// and its interrupts (12, 13, not used), the battery's voltage (1), the WS2812 RGB LED (38), and the USB port (19,
+/// 20).
+///
+/// Its 2 x 9 pin header brings out VBUS, BAT, 3V3, three grounds, GPIO 0, 2 to 11, and TXD and RXD, 43 and 44, the
+/// console's UART, which the platform keeps. 0 is the BOOT button, here unless the boot-button feature takes it, and 0, 3
+/// and 46 are strapping pins, read as the chip starts, so 0 and 3 should not be pulled low then. The RGB LED's pin,
+/// which is not on the header, is here as rgb_led, for smart_led::new with one LED.
+#[cfg(feature = "board-wave-esp32s3-lcd-147")]
+pub struct Remainder {
+    /// The BOOT button. Not with the boot-button feature, with which the platform wires it, see
+    /// Esp32PlatformBuilder::with_boot_button.
+    #[cfg(not(feature = "boot-button"))]
+    pub gpio0: esp_idf_hal::gpio::Gpio0<'static>,
+    pub gpio2: esp_idf_hal::gpio::Gpio2<'static>,
+    pub gpio3: esp_idf_hal::gpio::Gpio3<'static>,
+    pub gpio4: esp_idf_hal::gpio::Gpio4<'static>,
+    pub gpio5: esp_idf_hal::gpio::Gpio5<'static>,
+    pub gpio6: esp_idf_hal::gpio::Gpio6<'static>,
+    pub gpio7: esp_idf_hal::gpio::Gpio7<'static>,
+    pub gpio8: esp_idf_hal::gpio::Gpio8<'static>,
+    pub gpio9: esp_idf_hal::gpio::Gpio9<'static>,
+    pub gpio10: esp_idf_hal::gpio::Gpio10<'static>,
+    pub gpio11: esp_idf_hal::gpio::Gpio11<'static>,
+    /// The on-board WS2812 RGB LED's data pin, GPIO38.
+    pub rgb_led: esp_idf_hal::gpio::Gpio38<'static>,
+    pub i2c1: esp_idf_hal::i2c::I2C1<'static>,
+    pub spi3: esp_idf_hal::spi::SPI3<'static>,
+    pub rmt: esp_idf_hal::rmt::RMT,
+}
+
 #[cfg(feature = "board-wave-esp32c6-touch-147")]
 pub struct Remainder {
     // pub gpio0: esp_idf_hal::gpio::Gpio0<'static>,
@@ -393,9 +425,9 @@ pub struct Esp32PlatformBuilder {
     /// The BOOT button, on-board hardware, which releases an adopted device, see adoption::watch_boot_button.
     #[cfg(feature = "board-cyd-esp32-28")]
     boot_button: esp_idf_hal::gpio::Gpio0<'static>,
-    /// What must be kept for the card to stay mounted, or why it could not be, see sd_card.rs.
+    /// Whether the card is mounted, or why it could not be, see sd_card.rs, which keeps it.
     #[cfg(feature = "sd-card")]
-    sd_card: Result<Box<dyn std::any::Any>, String>,
+    sd_card: Result<(), String>,
     /// The board's battery, see battery.rs, None if its ADC could not be set up.
     #[cfg(feature = "battery")]
     battery: Option<Arc<crate::battery::Battery>>,
@@ -608,6 +640,87 @@ impl Esp32PlatformBuilder {
             let reset = PinDriver::output(peripherals.pins.gpio21)?;
 
             (remainder, spi, dc, back_light, reset)
+        };
+
+        // The SD card slot, mounted here, not in build, so that the card is there whatever else fails.
+        #[cfg(all(feature = "board-wave-esp32s3-lcd-147", feature = "sd-card"))]
+        let sd_card = crate::sd_card::mount_mmc_4bit(
+            peripherals.sdmmc1,
+            peripherals.pins.gpio15,
+            peripherals.pins.gpio14,
+            peripherals.pins.gpio16,
+            peripherals.pins.gpio18,
+            peripherals.pins.gpio17,
+            peripherals.pins.gpio21,
+        )
+        .map_err(|error| {
+            log::warn!("No SD card: {error:#}");
+            format!("{error:#}")
+        });
+        // The LiPo cell's voltage, a third of it, on GPIO1, see battery.rs. A failure to set up the ADC is logged rather
+        // than stopping the board, as it can run without knowing.
+        #[cfg(all(feature = "board-wave-esp32s3-lcd-147", feature = "battery"))]
+        let battery = crate::battery::Battery::new(peripherals.adc1, peripherals.pins.gpio1)
+            .map_err(|error| log::warn!("Unable to read the battery: {error:#}"))
+            .ok()
+            .map(Arc::new);
+        #[cfg(feature = "board-wave-esp32s3-lcd-147")]
+        let (remainder, spi, dc, back_light, reset, i2c) = {
+            use esp_idf_hal::{
+                gpio::PinDriver,
+                i2c::{I2cConfig, I2cDriver},
+                spi::{Dma, SpiConfig, SpiDeviceDriver, SpiDriverConfig},
+                units::Hertz,
+            };
+
+            let remainder = Remainder {
+                #[cfg(not(feature = "boot-button"))]
+                gpio0: peripherals.pins.gpio0,
+                gpio2: peripherals.pins.gpio2,
+                gpio3: peripherals.pins.gpio3,
+                gpio4: peripherals.pins.gpio4,
+                gpio5: peripherals.pins.gpio5,
+                gpio6: peripherals.pins.gpio6,
+                gpio7: peripherals.pins.gpio7,
+                gpio8: peripherals.pins.gpio8,
+                gpio9: peripherals.pins.gpio9,
+                gpio10: peripherals.pins.gpio10,
+                gpio11: peripherals.pins.gpio11,
+                rgb_led: peripherals.pins.gpio38,
+                i2c1: peripherals.i2c1,
+                spi3: peripherals.spi3,
+                rmt: peripherals.rmt,
+            };
+
+            let back_light = PinDriver::output(peripherals.pins.gpio46)?;
+
+            // The display only listens, so the bus has no MISO.
+            let bus: &'static SpiDriver<'static> = Box::leak(Box::new(SpiDriver::new(
+                peripherals.spi2,
+                peripherals.pins.gpio40,                // SCLK
+                peripherals.pins.gpio45,                // MOSI
+                None::<esp_idf_hal::gpio::AnyInputPin>, // MISO not used
+                &SpiDriverConfig::new().dma(Dma::Auto(4096)),
+            )?));
+            let spi = SpiDeviceDriver::new(
+                bus,
+                Some(peripherals.pins.gpio42),
+                &SpiConfig::new().baudrate(Hertz(40_000_000)),
+            )?;
+
+            // Control pins
+            let dc = PinDriver::output(peripherals.pins.gpio41)?;
+            let reset = PinDriver::output(peripherals.pins.gpio39)?;
+
+            // The QMI8658's bus, which more devices can join, see Esp32Platform::i2c.
+            let i2c = Arc::new(Mutex::new(I2cDriver::new(
+                peripherals.i2c0,
+                peripherals.pins.gpio48, // SDA
+                peripherals.pins.gpio47, // SCL
+                &I2cConfig::new().baudrate(Hertz(400_000)),
+            )?));
+
+            (remainder, spi, dc, back_light, reset, i2c)
         };
 
         #[cfg(all(feature = "board-wave-esp32c6-touch-147", feature = "sd-card"))]
@@ -1183,7 +1296,8 @@ impl Esp32PlatformBuilder {
             };
         }
 
-        #[cfg(feature = "board-wave-esp32c6-lcd-147")]
+        // The Waveshare ESP32-C6-LCD-1.47 and ESP32-S3-LCD-1.47B have the same display, wired to different pins.
+        #[cfg(any(feature = "board-wave-esp32c6-lcd-147", feature = "board-wave-esp32s3-lcd-147"))]
         {
             use embedded_graphics::prelude::Size;
             use esp_idf_hal::{
@@ -1255,6 +1369,11 @@ impl Esp32PlatformBuilder {
                 generation: 0,
                 display,
             };
+        }
+        // The QMI8658 IMU, on the board's I2C bus.
+        #[cfg(feature = "board-wave-esp32s3-lcd-147")]
+        {
+            imu = crate::ahrs::qmi8658::Qmi8658::new(&self.i2c)?;
         }
 
         #[cfg(feature = "board-wave-esp32c6-touch-147")]
@@ -1549,7 +1668,7 @@ pub struct Esp32Platform {
     #[cfg(esp_idf_esp_https_server_enable)]
     adoption: Arc<crate::adoption::Adoption>,
     #[cfg(feature = "sd-card")]
-    sd_card: Result<Box<dyn std::any::Any>, String>,
+    sd_card: Result<(), String>,
     /// The board's battery, see battery.rs, None if its ADC could not be set up.
     #[cfg(feature = "battery")]
     battery: Option<Arc<crate::battery::Battery>>,

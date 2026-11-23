@@ -83,9 +83,7 @@ impl Commands for EspCommands {
                     .stack_size(bruce_embedded_std::thread_stack(4096))
                     .spawn(|| {
                         std::thread::sleep(std::time::Duration::from_secs(2));
-                        unsafe {
-                            crate::sys::esp_restart();
-                        }
+                        crate::restart();
                     })?;
             }
             Some("factory_reset") => {
@@ -105,9 +103,7 @@ impl Commands for EspCommands {
                         .stack_size(bruce_embedded_std::thread_stack(4096))
                         .spawn(|| {
                             std::thread::sleep(std::time::Duration::from_secs(2));
-                            unsafe {
-                                crate::sys::esp_restart();
-                            }
+                            crate::restart();
                         })?;
                 }
             }

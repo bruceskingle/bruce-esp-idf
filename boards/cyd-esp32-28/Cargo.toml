@@ -16,7 +16,7 @@ anyhow = "1.0.102"
 croner = "3.0.1"
 chrono = "0.4.44"
 
-bruce-embedded-std = "0.2.0"
+bruce-embedded-std = "0.3.0"
 bruce-esp-idf = { path = "../../bruce-esp-idf", features = ["board-cyd-esp32-28"]}
 
 

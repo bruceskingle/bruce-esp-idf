@@ -172,7 +172,7 @@ impl ApiServer {
                 .stack_size(bruce_embedded_std::thread_stack(4096))
                 .spawn(|| {
                     std::thread::sleep(std::time::Duration::from_secs(1));
-                    unsafe { crate::sys::esp_restart() };
+                    crate::restart();
                 })?;
             Ok::<(), anyhow::Error>(())
         })?;

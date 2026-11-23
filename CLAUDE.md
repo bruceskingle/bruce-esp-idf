@@ -31,6 +31,7 @@ needs an ESP32 or ESP-IDF here; this depends on bruce-embedded-std, never the ot
 | esp32c3-supermini | `board-esp32c3-supermini` | `riscv32imc-esp-espidf` | esp32c3 |
 | wave-esp32c6-lcd-147 | `board-wave-esp32c6-lcd-147` | `riscv32imac-esp-espidf` | esp32c6 |
 | wave-esp32c6-touch-147 | `board-wave-esp32c6-touch-147` (+ `tilt`, `ahrs`) | `riscv32imac-esp-espidf` | esp32c6 |
+| wave-esp32s3-lcd-147 (1.47" 172x320 display, QMI8658, SD, 8 MB PSRAM) | `board-wave-esp32s3-lcd-147` (+ `tilt`, `ahrs`) | `xtensa-esp32s3-espidf` | esp32s3 |
 | seeed-esp32c6-xiao | `board-seeed-esp32c6-xiao` | `riscv32imac-esp-espidf` | esp32c6 |
 | wave-esp32s3-rlcd-42 (4.2" reflective LCD, 8 MB PSRAM) | `board-wave-esp32s3-rlcd-42` | `xtensa-esp32s3-espidf` | esp32s3 |
 

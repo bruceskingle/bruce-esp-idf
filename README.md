@@ -53,6 +53,7 @@ This repository has the library, ```bruce-esp-idf```, and an example binary crat
 │   ├── seeed-esp32c6-xiao
 │   ├── wave-esp32c6-lcd-147
 │   ├── wave-esp32c6-touch-147
+│   ├── wave-esp32s3-lcd-147
 │   └── wave-esp32s3-rlcd-42
 └── bruce-esp-idf
 ```
@@ -120,7 +121,7 @@ fn start(&mut self, platform: &mut Esp32Platform, initializer: &mut Esp32Platfor
 ```clear_action()``` makes a button do nothing again. A button wired to a pin of the ```Remainder``` works in the same way, with ```PushButton::new("Name", remainder.gpio4)?``` and then ```set_action()```. Buttons are taken to connect their pin to ground when pressed, using the chip's own pull-up, as board buttons usually do.
 
 ## SD Cards
-With the ```sd-card``` feature the platform mounts the board's SD card at start-up, with FAT, at ```/sd```, so that it can be used with ```std::fs```. ```platform.sd_card()``` gives the mount point, or why there is no card, and ```sd_card::space()``` its size and free space. The card is only looked for at start-up, so a card put in later is found when the board next restarts.
+With the ```sd-card``` feature the platform mounts the board's SD card at start-up, with FAT, at ```/sd```, so that it can be used with ```std::fs```. ```platform.sd_card()``` gives the mount point, or why there is no card, and ```sd_card::space()``` its size and free space. The card is only looked for at start-up, so a card put in later is found when the board next restarts. Some cards do not answer after a restart which does not cut the power: see [docs/Hardware.md](docs/Hardware.md#sd-cards) for those which have been tried.
 
 ## Displays
 On a board with a display, ```platform.display_manager``` is the board's ```DisplayManager```, which *Features* draw with, using ```embedded-graphics```. On a black and white display (the ```mono-display``` feature) colours are drawn as ink or paper by their brightness, so that a design for a colour display, light on dark, comes out dark on light, and *Features* offer no colour settings.
@@ -161,34 +162,5 @@ Firmware for a board which bruce-embedded-std's board simulator can simulate, so
 The platform's code compiles for the computer as it is: it uses ESP-IDF's services and C API as ```crate::svc``` and ```crate::sys```, which are ```esp_idf_svc``` and ```esp_idf_sys``` on an ESP32, and the simulator's stand-ins for them, under the same names, with ```sim```. Only what is truly ESP-IDF's has a twin for the computer, in ```src/sim/```, chosen with ```#[cfg_attr(feature = "sim", path = ...)]```: the platform itself, which needs no Wi-Fi or setup portal, the core feature without its Wi-Fi settings, the identity, the buttons, the touch screen, the display and the speaker. Sensors a simulated board has none of read nothing. A thread's stack is given with ```bruce_embedded_std::thread_stack```, the device's size on an ESP32 and enough for a computer elsewhere.
 
 # Supported Boards
-The following boards are currently supported:
-
-## board-cyd-esp32-28
-The so called "Cheap Yellow Display" or more properly the **ESP32-2432S028R** is a 
-development board has become known in the maker community as the “Cheap Yellow Display” or CYD for short. This development board, whose main chip is an ESP32-WROOM-32 module, comes with
-
-- 2.8-inch TFT touchscreen LCD
-- microSD card interface
-- RGB LED
-- built-in LDR (light-dependent resistor)      d
-- all the required circuitry to program and apply power to the board.
-
-Useful board information can be found at [Random Nerd Tutorials](https://randomnerdtutorials.com/?s=CYD)
-I have read that there are clones of this board which have slight differences, the one I developed on cam from [Ali Express](https://www.aliexpress.com/item/1005008229897039.html)
-
-## board-seeed-esp32c6-xiao
-This is the [Seed Studio XIAO ESP32-C6](https://www.seeedstudio.com/Seeed-Studio-XIAO-ESP32C6-p-5884.html) board which combines 2.4GHz Wi-Fi 6 (802.11ax), Bluetooth 5(LE), and IEEE 802.15.4 radio connectivity with a C6 processor.
-
-## board-wave-esp32s3-rlcd-42
-This is the [Waveshare ESP32-S3-RLCD-4.2](https://www.waveshare.com/product/esp32-related/boards-kits/esp32-s3/esp32-s3-rlcd-4.2.htm), whose ESP32-S3-WROOM-1-N16R8 module has two cores, 16 MB of flash and 8 MB of PSRAM, which the platform adds to the heap. It comes with
-
-- a 4.2-inch reflective LCD, 400 x 300, black and white, with an ST7305 controller, and no backlight: it is lit by the room, like e-paper, and readable in daylight. The outermost row and column of pixels on each edge are hidden by its frame, so the platform offers the 398 x 298 which can be seen. The example's **Edge Test** *Feature* draws a pattern to check this.
-- a microSD card slot, wired for SDMMC with one data line (the ```sd-card``` feature)
-- a KEY button (the ```key-button``` feature), and a BOOT button which, once the board has started, can be used as a button too (the ```boot-button``` feature)
-- an SHTC3 temperature and humidity sensor, which the platform always drives
-- an ES8311 audio codec and amplifier, with a connector for the speaker which comes with it, which the platform always drives
-- a PCF85063 real time clock, and two microphones, which the platform does not drive yet
-- a 2 x 8 pin, 2.54 mm header, with 3V3, VBUS, two grounds, and GPIO 0, 1, 2, 3, 17, 18, 19, 20, 43, 44, 13 and 14. GPIO 1, 2, 3 and 17 are free, in the ```Remainder```. 13 and 14 are the board's I2C bus, which more devices can join, using ```platform.i2c()```. 0 and 18 are the buttons, 19 and 20 the USB port, and 43 and 44 the console's UART, which the platform keeps
-- a holder for an 18650 lithium battery, with charging, and a PWR button which switches the battery's power. The battery is not supplied: an unprotected 18650, flat or button top, about 65 mm long, fits.
-
-There is no reset button: unplug it, use the config page's **Restart** command, or reset it over USB. The example application, in ```boards/wave-esp32s3-rlcd-42```, plays ```sounds/Startup.wav``` as it starts, and shows an analog clock, the SD card's size and free space when KEY is pressed, and the temperature and humidity when BOOT is pressed, each with a beep.
+The boards the platform supports, what each has and which of its hardware the platform drives, and the SD cards which
+have been tried in them, are in [docs/Hardware.md](docs/Hardware.md).

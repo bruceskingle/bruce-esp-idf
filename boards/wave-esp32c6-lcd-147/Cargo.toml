@@ -17,7 +17,7 @@ croner = "3.0.1"
 chrono = "0.4.44"
 embedded-graphics = "0.8"
 
-bruce-embedded-std = "0.2.0"
+bruce-embedded-std = "0.3.0"
 bruce-esp-idf = { path = "../../bruce-esp-idf", features = ["board-wave-esp32c6-lcd-147"]}
 
 

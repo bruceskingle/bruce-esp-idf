@@ -122,6 +122,15 @@ pub fn reported_board_name() -> String {
 /// board has no battery, rather than that it cannot be read.
 pub const SIMULATED: bool = cfg!(feature = "sim");
 
+/// Restarts the device, as its restart command, /api/restart and a factory reset do: unmounts the SD card first, so
+/// that it is not in the middle of a write, which leaves some cards unable to answer until the power is cut, see
+/// sd_card::unmount.
+pub fn restart() -> ! {
+    #[cfg(all(feature = "sd-card", not(feature = "sim")))]
+    sd_card::unmount();
+    unsafe { sys::esp_restart() }
+}
+
 /// Why the simulated device last started: it is started like a device which is powered on.
 #[cfg(feature = "sim")]
 pub fn reset_reason() -> &'static str {
@@ -155,10 +164,20 @@ pub fn reset_reason() -> &'static str {
 
 #[cfg(all(
     feature = "boot-button",
-    not(any(feature = "board-wave-esp32s3-rlcd-42", feature = "board-guition-jc3248w535c"))
+    not(any(
+        feature = "board-wave-esp32s3-rlcd-42",
+        feature = "board-guition-jc3248w535c",
+        feature = "board-wave-esp32s3-lcd-147"
+    ))
 ))]
 compile_error!(
-    "The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c."
+    "The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c, board-wave-esp32s3-lcd-147."
+);
+// The QMI8658's driver is in the ahrs module, which only the tilt and ahrs features build, so a board with one needs
+// either, rather than failing to compile somewhere less clear.
+#[cfg(all(feature = "qmi8658", not(any(feature = "tilt", feature = "ahrs"))))]
+compile_error!(
+    "A board with a QMI8658 IMU, board-wave-esp32c6-touch-147 or board-wave-esp32s3-lcd-147, needs the tilt or ahrs feature."
 );
 #[cfg(all(feature = "key-button", not(feature = "board-wave-esp32s3-rlcd-42")))]
 compile_error!("The key-button feature is for a board with a KEY button: board-wave-esp32s3-rlcd-42.");
@@ -175,6 +194,8 @@ pub const fn board_name() -> &'static str {
         "wave-esp32c6-lcd-147"
     } else if cfg!(feature = "board-wave-esp32c6-touch-147") {
         "wave-esp32c6-touch-147"
+    } else if cfg!(feature = "board-wave-esp32s3-lcd-147") {
+        "wave-esp32s3-lcd-147"
     } else if cfg!(feature = "board-wave-esp32s3-rlcd-42") {
         "wave-esp32s3-rlcd-42"
     } else if cfg!(feature = "board-guition-jc3248w535c") {

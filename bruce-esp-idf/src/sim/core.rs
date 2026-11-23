@@ -70,7 +70,7 @@ impl Feature for Core {
 
     fn start(
         &mut self,
-        _platform: &mut Esp32Platform,
+        platform: &mut Esp32Platform,
         initializer: &mut Esp32PlatformInitializer,
         config: CoreConfig,
     ) -> anyhow::Result<()> {
@@ -79,7 +79,9 @@ impl Feature for Core {
         let local_time = Local::now();
         info!("Local time is: {}", local_time.format("%Y-%m-%d %H:%M:%S"));
 
-        self.mdns_responder.start(config.mdns_hostname)?;
+        // Advertising what the device is, for apps and the flasher, see crate::mdns_services.
+        let services = crate::mdns_services(platform);
+        self.mdns_responder.start(config.mdns_hostname, services)?;
 
         let resolve_task = ResolveTask {};
         initializer.add_task(Box::new(resolve_task), "0 * * * * *")?;
@@ -90,7 +92,11 @@ impl Feature for Core {
 pub struct ResolveTask {}
 
 impl ScheduledTask<Esp32Platform> for ResolveTask {
-    fn run(&mut self, _platform: &mut Esp32Platform) -> anyhow::Result<()> {
+    fn run(&mut self, platform: &mut Esp32Platform) -> anyhow::Result<()> {
+        // Whether the device is adopted, which changes as it runs, in its mDNS service's facts, announced if it changed.
+        platform
+            .mdns_txt()
+            .set("adopted", if platform.is_adopted() { "1" } else { "0" });
         log::info!("Top of loop");
 
         let datetime = Local::now();

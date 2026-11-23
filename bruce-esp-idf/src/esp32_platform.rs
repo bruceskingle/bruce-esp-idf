@@ -1590,6 +1590,7 @@ impl Esp32PlatformBuilder {
                 core_config_valid: self.core_config_valid,
                 nvs_partition: self.nvs_partition.clone(),
                 firmware: self.firmware,
+                mdns_txt: Default::default(),
                 ip_address: None,
                 #[cfg(esp_idf_esp_https_server_enable)]
                 api_server: None,
@@ -1637,6 +1638,9 @@ impl Esp32PlatformRunner {
 }
 
 pub struct Esp32Platform {
+    /// The facts of the device's mDNS service's TXT record, which the platform sets, see crate::mdns_services, and the
+    /// firmware may add to, see mdns_txt.
+    mdns_txt: bruce_embedded_std::mdns::MdnsTxt,
     /// The board's buttons, see key_button and boot_button.
     #[cfg(feature = "key-button")]
     key_button: crate::push_button::PushButton,
@@ -1707,6 +1711,24 @@ impl Esp32Platform {
         Ok(())
     }
 
+    /// Adds a handler for reading which may take a while, e.g. a page of a store's change feed, see ApiServer::get_bulk,
+    /// to the API, if it is running, so also over plain HTTP, on a server of its own.
+    #[cfg(esp_idf_esp_https_server_enable)]
+    pub fn api_get_bulk<F>(&mut self, uri: &str, f: F) -> anyhow::Result<()>
+    where
+        F: for<'r> Fn(
+                esp_idf_svc::http::server::Request<&mut esp_idf_svc::http::server::EspHttpConnection<'r>>,
+            ) -> anyhow::Result<()>
+            + Send
+            + Sync
+            + 'static,
+    {
+        if let Some(api_server) = self.api_server.as_mut() {
+            api_server.get_bulk(&mut self.server_manager, uri, f)?;
+        }
+        Ok(())
+    }
+
     /// The device's ID, its Wi-Fi MAC address in hex, e.g. 441bf6cc7fcc, which the app knows it by, see identity.rs,
     /// None if the API server did not start.
     #[cfg(esp_idf_esp_https_server_enable)]
@@ -1714,6 +1736,12 @@ impl Esp32Platform {
         self.api_server
             .as_ref()
             .map(|api_server| api_server.identity().id.clone())
+    }
+
+    /// The device's ID, its Wi-Fi MAC address in hex, on a board without the API, see crate::mac_id.
+    #[cfg(not(esp_idf_esp_https_server_enable))]
+    pub fn device_id(&self) -> Option<String> {
+        crate::mac_id()
     }
 
     /// The device's name on the network, e.g. cyd, from its mDNS hostname setting, if it has one.
@@ -1732,6 +1760,17 @@ impl Esp32Platform {
     /// address has its port too, see the simulator's platform.
     pub fn address(&self) -> Option<String> {
         self.ip_address.map(|address| address.to_string())
+    }
+
+    /// The facts of the device's mDNS service's TXT record, e.g. for the firmware to add its own, as `key=value`, each
+    /// change announced at once, see crate::mdns_services.
+    pub fn mdns_txt(&self) -> &bruce_embedded_std::mdns::MdnsTxt {
+        &self.mdns_txt
+    }
+
+    /// The firmware's name and version, see with_firmware.
+    pub fn firmware(&self) -> crate::Firmware {
+        self.firmware
     }
 
     /// Whether the device has been adopted by an app, see adoption.rs.

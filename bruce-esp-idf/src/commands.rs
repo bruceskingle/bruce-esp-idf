@@ -4,8 +4,6 @@ use bruce_embedded_std::{command::Commands, config_manager::ConfigManager};
 use indexmap::IndexMap;
 use log::info;
 
-use crate::core::CORE_FEATURE_NAME;
-
 pub struct EspCommands {}
 
 impl EspCommands {
@@ -50,7 +48,8 @@ impl Commands for EspCommands {
                         <label for="command">Command</label>
                             <select name="command" id="command">
                                 <option value="restart">Restart</option>
-                                <option value="factory_reset">Factory Reset</option>
+                                <option value="reset_settings">Reset Settings, Keep the Wi-Fi</option>
+                                <option value="factory_reset">Factory Reset, Erase Everything</option>
                             </select>
                             <button type="submit">Execute</button>
                         </form>
@@ -66,7 +65,7 @@ impl Commands for EspCommands {
         &self,
         resp: &mut dyn Write,
         form: IndexMap<String, String>,
-        config_manager: &ConfigManager,
+        _config_manager: &ConfigManager,
     ) -> anyhow::Result<()> {
         let command = form.get("command");
         match command.map(|s| s.as_str()) {
@@ -86,26 +85,34 @@ impl Commands for EspCommands {
                         crate::restart();
                     })?;
             }
-            Some("factory_reset") => {
-                info!("Factory reset command received, erasing config and restarting...");
-                if let Err(e) = config_manager.erase_config(CORE_FEATURE_NAME) {
-                    log::error!("Failed to erase config: {}", e);
-                    message_page(resp, "Factory reset failed", "The settings could not be erased.")?;
+            // Both erase the device's settings, see reset.rs, then restart, as restart does.
+            Some(command @ ("reset_settings" | "factory_reset")) => {
+                let (reset, title, message) = if command == "reset_settings" {
+                    (
+                        crate::reset::Reset::KeepWifi,
+                        "Settings reset",
+                        "Every setting but the network settings, the Wi-Fi, the device's name and time zone, has been erased, including its adoption by an app, and the device is restarting, on the same network.",
+                    )
                 } else {
-                    message_page(
-                        resp,
+                    (
+                        crate::reset::Reset::Everything,
                         "Factory reset",
-                        "The settings have been erased and the device is restarting, with its own Wi-Fi network for setting it up again.",
-                    )?;
-
-                    // A small stack, as the default may not fit in the RAM which is left.
-                    std::thread::Builder::new()
-                        .stack_size(bruce_embedded_std::thread_stack(4096))
-                        .spawn(|| {
-                            std::thread::sleep(std::time::Duration::from_secs(2));
-                            crate::restart();
-                        })?;
-                }
+                        "Every setting has been erased and the device is restarting, with its own Wi-Fi network for setting it up again.",
+                    )
+                };
+                info!("{title} command received, erasing and restarting...");
+                message_page(resp, title, message)?;
+                // On a thread of its own, after the page has gone, as walking the settings and erasing them takes more
+                // stack than the HTTP server's task has, which overflowed it on 23 November 2026, then restarting.
+                std::thread::Builder::new()
+                    .stack_size(bruce_embedded_std::thread_stack(12 * 1024))
+                    .spawn(move || {
+                        std::thread::sleep(std::time::Duration::from_secs(1));
+                        if let Err(error) = crate::reset::erase(reset) {
+                            log::error!("Unable to erase the settings, {error:#}");
+                        }
+                        crate::restart();
+                    })?;
             }
             Some(cmd) => {
                 log::warn!("Unknown command received: {}", cmd);

@@ -110,6 +110,50 @@ macro_rules! firmware {
 
 /// The board's name as the device reports it to an app, see api.rs: board_name, with -sim after it in the simulator,
 /// e.g. wave-esp32s3-rlcd-42-sim, so that a simulated device is told apart from a real one wherever it is shown.
+/// The device's DNS-SD services, see bruce_embedded_std::mdns, of SERVICE_TYPE, and of HTTP_SERVICE_TYPE, which routers
+/// which pass mDNS between networks pass, by its ID, on its HTTP port, with the
+/// facts which the flasher and apps use to tell what it is: its ID, board, chip, firmware and its version, the
+/// platform's version, and, with the API, whether it is adopted, which the core feature keeps up to date. The firmware may add facts
+/// of its own, see Esp32Platform::mdns_txt. None until the device has an ID, see identity.rs.
+/// The board's ID, its Wi-Fi MAC address in hex, e.g. 44bd8d791738, as identity.rs gives it with the API, for a
+/// board without the API, e.g. a platform demo, so that it is found by mDNS too, see mdns_services.
+#[cfg(not(any(esp_idf_esp_https_server_enable, feature = "sim")))]
+pub(crate) fn mac_id() -> Option<String> {
+    let mut mac = [0u8; 6];
+    let result = unsafe { sys::esp_read_mac(mac.as_mut_ptr(), sys::esp_mac_type_t_ESP_MAC_WIFI_STA) };
+    (result == sys::ESP_OK).then(|| mac.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
+pub(crate) fn mdns_services(platform: &Esp32Platform) -> Vec<bruce_embedded_std::mdns::MdnsService> {
+    use bruce_embedded_std::mdns::{HTTP_SERVICE_TYPE, MdnsService, SERVICE_TYPE};
+    let Some(id) = platform.device_id() else {
+        return Vec::new();
+    };
+    let txt = platform.mdns_txt().clone();
+    let firmware = platform.firmware();
+    txt.set("id", id.clone());
+    txt.set("board", reported_board_name());
+    txt.set("chip", chip::chip().model);
+    txt.set("fw", firmware.name);
+    txt.set("fwv", firmware.version);
+    txt.set("pv", env!("CARGO_PKG_VERSION"));
+    // Only a board with the API can be adopted.
+    #[cfg(any(esp_idf_esp_https_server_enable, feature = "sim"))]
+    txt.set("adopted", if platform.is_adopted() { "1" } else { "0" });
+    let service = MdnsService {
+        service_type: SERVICE_TYPE.to_string(),
+        instance: id,
+        // The HTTP server's, 80 on a device, a simulated device's own on a computer.
+        port: svc::http::server::Configuration::default().http_port,
+        txt,
+    };
+    let http = MdnsService {
+        service_type: HTTP_SERVICE_TYPE.to_string(),
+        ..service.clone()
+    };
+    vec![service, http]
+}
+
 pub fn reported_board_name() -> String {
     if SIMULATED {
         format!("{}-sim", board_name())
@@ -217,6 +261,7 @@ mod http;
 mod led;
 #[cfg(not(feature = "sim"))]
 mod portal;
+mod reset;
 #[cfg(not(feature = "sim"))]
 pub mod smart_led;
 #[cfg(not(feature = "sim"))]

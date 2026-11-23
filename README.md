@@ -6,6 +6,8 @@ The core platform provides a set of services to support the running of one or mo
 
 The HTTP server is still available (on the IP address allocated by your WiFi network) which means that further configuration is possible and this HTTP server can also be used by *Features* to provide application functionality. The *Core Feature* includes an mDNS server so that you can easily find the board using a DNS name in the **.local** domain, and a task scheduler which can be used to run task processes on a predetermined schedule using [Cron](https://en.wikipedia.org/wiki/Cron) like schedules, and an [NTP](https://en.wikipedia.org/wiki/Ntpd) client which synchronies the system clock with real time.
 
+The config page's **Commands** restart the device, or erase its saved settings, its NVS, and restart it: **Reset Settings, Keep the Wi-Fi** erases everything but the network settings, the Wi-Fi network and password, the device's name on the network and its time zone, e.g. the features' settings and an app's adoption of it, so that it comes back on the same network as a new device; **Factory Reset, Erase Everything** erases them all, so that it starts with its own Wi-Fi network for setting it up again, as a new board does. Both are the platform's, see ```reset.rs```, so every firmware on it has them. ```bruce-embedded-flash flash --erase-settings``` erases them all over USB, for a board which does not stay up long enough to use its page.
+
 # A Simple Example Application
 This is the sample application for the ESP32 DevKitV1 board:
 

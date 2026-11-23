@@ -131,9 +131,7 @@ checksum = "c5880821c9abff5fc57482b0a702e8b472af04c7eef60ff9bdbdbeb809f48858"
 
 [[package]]
 name = "bruce-embedded-std"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80fa07843ddf73435e951d5034b681a2df06bfd71577020b2d3313587cd6ba40"
+version = "0.3.0"
 dependencies = [
  "ahrs",
  "anyhow",
@@ -153,9 +151,7 @@ dependencies = [
 
 [[package]]
 name = "bruce-embedded-std-derive"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "510948fb48644a6bf9bdb3ffac1ce14ef873cd6a915bfa748166c5e1099127d9"
+version = "0.3.0"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2835,3 +2831,7 @@ name = "zmij"
 version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b8848ee67ecc8aedbaf3e4122217aff892639231befc6a1b58d29fff4c2cabaa"
+
+[[patch.unused]]
+name = "bruce-embedded-sim"
+version = "0.3.0"

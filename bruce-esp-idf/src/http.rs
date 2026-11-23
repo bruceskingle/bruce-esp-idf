@@ -79,6 +79,20 @@ impl EspHttpServerManager<'_> {
         Ok(Self { server })
     }
 
+    /// A plain HTTP server of its own on port, with its own control port, ctrl_port, and task, serving at most
+    /// connections at once, e.g. for slow reads, see ApiServer::get_bulk, so that one does not hold up the others.
+    #[cfg(not(feature = "sim"))]
+    pub fn on_port(port: u16, ctrl_port: u16, connections: usize) -> anyhow::Result<Self> {
+        let server = EspHttpServer::new(&crate::svc::http::server::Configuration {
+            http_port: port,
+            ctrl_port,
+            max_open_sockets: connections,
+            stack_size: 6144,
+            ..Default::default()
+        })?;
+        Ok(Self { server })
+    }
+
     pub fn on<F>(&mut self, uri: &str, method: Method, f: F) -> anyhow::Result<&mut Self>
     where
         F: for<'r> Fn(crate::svc::http::server::Request<&mut EspHttpConnection<'r>>) -> anyhow::Result<()>

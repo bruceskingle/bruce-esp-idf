@@ -43,6 +43,12 @@
 		},
 		{
 			"path": "../sleepy-eyes-clock"
+		},
+		{
+			"path": "../bruce-quiz-party"
+		},
+		{
+			"path": "../bruce-quiz-library"
 		}
 	],
 	"settings": {
@@ -58,6 +64,7 @@
 			"../bruce-esp-idf/boards/esp32-devkit-v1/Cargo.toml",
 			// "../bruce-esp-idf/boards/esp32c3-supermini/Cargo.toml",
 			// "../bruce-esp-idf/boards/wave-esp32c6-lcd-147/Cargo.toml",
+			// "../bruce-esp-idf/boards/wave-esp32s3-lcd-147/Cargo.toml",
 			// "../bruce-esp-idf/boards/wave-esp32c6-touch-147/Cargo.toml",
 			// "../bruce-esp-idf/boards/seeed-esp32c6-xiao/Cargo.toml",
 			"../bruce-embedded-std/Cargo.toml", // This is needed

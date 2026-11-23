@@ -1,6 +1,7 @@
 //! The board's battery, e.g. the Waveshare ESP32-S3-RLCD-4.2's 18650 cell, whose voltage, through a divider which
 //! makes it a third, is read on an ADC pin, GPIO4, ADC1's channel 3, as Waveshare's 03_ADC_Test example reads it, see
-//! Esp32Platform::battery.
+//! Esp32Platform::battery. The Waveshare ESP32-S3-LCD-1.47B's divider, 200K over 100K, makes it a third too, read on
+//! GPIO1, ADC1's channel 0.
 //!
 //! The voltage says roughly how charged the cell is, see percent, but not exactly: it is higher while it charges and
 //! lower under load, and with no cell at all the charger's own voltage is read on USB, which looks like a full one.
@@ -10,7 +11,11 @@ use std::sync::Mutex;
 use esp_idf_hal::adc::ADC1;
 use esp_idf_hal::adc::oneshot::config::{AdcChannelConfig, Calibration};
 use esp_idf_hal::adc::oneshot::{AdcChannelDriver, AdcDriver};
-use esp_idf_hal::gpio::Gpio4;
+/// The board's battery pin, see the module comment.
+#[cfg(feature = "board-wave-esp32s3-rlcd-42")]
+pub type BatteryPin = esp_idf_hal::gpio::Gpio4<'static>;
+#[cfg(feature = "board-wave-esp32s3-lcd-147")]
+pub type BatteryPin = esp_idf_hal::gpio::Gpio1<'static>;
 use esp_idf_sys::EspError;
 
 /// How much the divider divides the cell's voltage by.
@@ -31,7 +36,7 @@ pub struct Battery {
 }
 
 impl Battery {
-    pub(crate) fn new(adc: ADC1<'static>, pin: Gpio4<'static>) -> anyhow::Result<Battery> {
+    pub(crate) fn new(adc: ADC1<'static>, pin: BatteryPin) -> anyhow::Result<Battery> {
         let driver = AdcDriver::new(adc)?;
         // Up to about 3.1 V at the pin, a cell's 4.2 V being 1.4 V there, calibrated to mV.
         let config = AdcChannelConfig {

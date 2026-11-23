@@ -317,6 +317,7 @@ impl Esp32PlatformBuilder {
                 ap_mode: self.ap_mode,
                 nvs_partition: self.nvs_partition,
                 firmware: self.firmware,
+                mdns_txt: Default::default(),
                 ip_address: None,
                 wifi_sender: self.wifi_sender,
                 api_server: None,
@@ -368,6 +369,9 @@ impl Esp32PlatformRunner {
 }
 
 pub struct Esp32Platform {
+    /// The facts of the device's mDNS service's TXT record, which the platform sets, see crate::mdns_services, and the
+    /// firmware may add to, see mdns_txt.
+    mdns_txt: bruce_embedded_std::mdns::MdnsTxt,
     #[cfg(feature = "key-button")]
     key_button: crate::push_button::PushButton,
     #[cfg(feature = "boot-button")]
@@ -414,6 +418,23 @@ impl Esp32Platform {
         Ok(())
     }
 
+    /// Adds a handler for reading which may take a while, as the device's does, see ApiServer::get_bulk; served by the
+    /// simulator's one HTTP server, as its devices share a computer's ports.
+    pub fn api_get_bulk<F>(&mut self, uri: &str, f: F) -> anyhow::Result<()>
+    where
+        F: for<'r> Fn(
+                crate::svc::http::server::Request<&mut crate::svc::http::server::EspHttpConnection<'r>>,
+            ) -> anyhow::Result<()>
+            + Send
+            + Sync
+            + 'static,
+    {
+        if let Some(api_server) = self.api_server.as_mut() {
+            api_server.get_bulk(&mut self.server_manager, uri, f)?;
+        }
+        Ok(())
+    }
+
     pub fn device_id(&self) -> Option<String> {
         self.api_server
             .as_ref()
@@ -434,6 +455,17 @@ impl Esp32Platform {
     pub fn address(&self) -> Option<String> {
         let port = crate::sim::port(&self.nvs_partition).ok()?;
         self.ip_address.map(|address| format!("{address}:{port}"))
+    }
+
+    /// The facts of the device's mDNS service's TXT record, e.g. for the firmware to add its own, as `key=value`, each
+    /// change announced at once, see crate::mdns_services.
+    pub fn mdns_txt(&self) -> &bruce_embedded_std::mdns::MdnsTxt {
+        &self.mdns_txt
+    }
+
+    /// The firmware's name and version, see with_firmware.
+    pub fn firmware(&self) -> crate::Firmware {
+        self.firmware
     }
 
     pub fn is_adopted(&self) -> bool {

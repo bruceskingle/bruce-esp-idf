@@ -131,9 +131,9 @@ checksum = "c5880821c9abff5fc57482b0a702e8b472af04c7eef60ff9bdbdbeb809f48858"
 
 [[package]]
 name = "bruce-embedded-std"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80fa07843ddf73435e951d5034b681a2df06bfd71577020b2d3313587cd6ba40"
+checksum = "75ea6c11ca8d2decd20d2076d9592e62c00d0fef88d3fdc15093fea94ef85d69"
 dependencies = [
  "ahrs",
  "anyhow",
@@ -153,9 +153,9 @@ dependencies = [
 
 [[package]]
 name = "bruce-embedded-std-derive"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "510948fb48644a6bf9bdb3ffac1ce14ef873cd6a915bfa748166c5e1099127d9"
+checksum = "6018cbb8d73d17a5e293a8d29ee99dbfc23a979c43f3499f8de01a2d6c5c872f"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "bruce-esp-idf"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "bruce-embedded-firmware-record",
@@ -193,7 +193,7 @@ dependencies = [
 
 [[package]]
 name = "bruce-esp-idf-example-wave-esp32c6-touch-147"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "bruce-embedded-std",
@@ -860,7 +860,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1970,7 +1970,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2216,7 +2216,7 @@ dependencies = [
  "getrandom",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2491,7 +2491,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

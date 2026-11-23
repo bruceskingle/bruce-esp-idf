@@ -1,6 +1,6 @@
 [package]
 name = "bruce-esp-idf-example-wave-esp32s3-rlcd-42"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 resolver = "2"
 license = "MIT OR Apache-2.0"
@@ -14,7 +14,7 @@ harness = false # do not use the built-in cargo test harness -> resolve rust-ana
 anyhow = "1.0.102"
 log = "0.4"
 
-bruce-embedded-std = "0.2.0"
+bruce-embedded-std = "0.3.0"
 # Without its default, espidf, so that the sim feature can choose the simulator in its place, see [features].
 bruce-esp-idf = { path = "../../bruce-esp-idf", default-features = false, features = ["board-wave-esp32s3-rlcd-42", "boot-button", "key-button", "sd-card"]}
 embedded-graphics = "0.8"

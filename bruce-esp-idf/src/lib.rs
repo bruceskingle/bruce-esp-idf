@@ -110,6 +110,50 @@ macro_rules! firmware {
 
 /// The board's name as the device reports it to an app, see api.rs: board_name, with -sim after it in the simulator,
 /// e.g. wave-esp32s3-rlcd-42-sim, so that a simulated device is told apart from a real one wherever it is shown.
+/// The device's DNS-SD services, see bruce_embedded_std::mdns, of SERVICE_TYPE, and of HTTP_SERVICE_TYPE, which routers
+/// which pass mDNS between networks pass, by its ID, on its HTTP port, with the
+/// facts which the flasher and apps use to tell what it is: its ID, board, chip, firmware and its version, the
+/// platform's version, and, with the API, whether it is adopted, which the core feature keeps up to date. The firmware may add facts
+/// of its own, see Esp32Platform::mdns_txt. None until the device has an ID, see identity.rs.
+/// The board's ID, its Wi-Fi MAC address in hex, e.g. 44bd8d791738, as identity.rs gives it with the API, for a
+/// board without the API, e.g. a platform demo, so that it is found by mDNS too, see mdns_services.
+#[cfg(not(any(esp_idf_esp_https_server_enable, feature = "sim")))]
+pub(crate) fn mac_id() -> Option<String> {
+    let mut mac = [0u8; 6];
+    let result = unsafe { sys::esp_read_mac(mac.as_mut_ptr(), sys::esp_mac_type_t_ESP_MAC_WIFI_STA) };
+    (result == sys::ESP_OK).then(|| mac.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
+pub(crate) fn mdns_services(platform: &Esp32Platform) -> Vec<bruce_embedded_std::mdns::MdnsService> {
+    use bruce_embedded_std::mdns::{HTTP_SERVICE_TYPE, MdnsService, SERVICE_TYPE};
+    let Some(id) = platform.device_id() else {
+        return Vec::new();
+    };
+    let txt = platform.mdns_txt().clone();
+    let firmware = platform.firmware();
+    txt.set("id", id.clone());
+    txt.set("board", reported_board_name());
+    txt.set("chip", chip::chip().model);
+    txt.set("fw", firmware.name);
+    txt.set("fwv", firmware.version);
+    txt.set("pv", env!("CARGO_PKG_VERSION"));
+    // Only a board with the API can be adopted.
+    #[cfg(any(esp_idf_esp_https_server_enable, feature = "sim"))]
+    txt.set("adopted", if platform.is_adopted() { "1" } else { "0" });
+    let service = MdnsService {
+        service_type: SERVICE_TYPE.to_string(),
+        instance: id,
+        // The HTTP server's, 80 on a device, a simulated device's own on a computer.
+        port: svc::http::server::Configuration::default().http_port,
+        txt,
+    };
+    let http = MdnsService {
+        service_type: HTTP_SERVICE_TYPE.to_string(),
+        ..service.clone()
+    };
+    vec![service, http]
+}
+
 pub fn reported_board_name() -> String {
     if SIMULATED {
         format!("{}-sim", board_name())
@@ -121,6 +165,15 @@ pub fn reported_board_name() -> String {
 /// Whether this is the platform on a computer, in the board simulator, see sim/mod.rs, e.g. for firmware to say that a
 /// board has no battery, rather than that it cannot be read.
 pub const SIMULATED: bool = cfg!(feature = "sim");
+
+/// Restarts the device, as its restart command, /api/restart and a factory reset do: unmounts the SD card first, so
+/// that it is not in the middle of a write, which leaves some cards unable to answer until the power is cut, see
+/// sd_card::unmount.
+pub fn restart() -> ! {
+    #[cfg(all(feature = "sd-card", not(feature = "sim")))]
+    sd_card::unmount();
+    unsafe { sys::esp_restart() }
+}
 
 /// Why the simulated device last started: it is started like a device which is powered on.
 #[cfg(feature = "sim")]
@@ -155,10 +208,20 @@ pub fn reset_reason() -> &'static str {
 
 #[cfg(all(
     feature = "boot-button",
-    not(any(feature = "board-wave-esp32s3-rlcd-42", feature = "board-guition-jc3248w535c"))
+    not(any(
+        feature = "board-wave-esp32s3-rlcd-42",
+        feature = "board-guition-jc3248w535c",
+        feature = "board-wave-esp32s3-lcd-147"
+    ))
 ))]
 compile_error!(
-    "The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c."
+    "The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c, board-wave-esp32s3-lcd-147."
+);
+// The QMI8658's driver is in the ahrs module, which only the tilt and ahrs features build, so a board with one needs
+// either, rather than failing to compile somewhere less clear.
+#[cfg(all(feature = "qmi8658", not(any(feature = "tilt", feature = "ahrs"))))]
+compile_error!(
+    "A board with a QMI8658 IMU, board-wave-esp32c6-touch-147 or board-wave-esp32s3-lcd-147, needs the tilt or ahrs feature."
 );
 #[cfg(all(feature = "key-button", not(feature = "board-wave-esp32s3-rlcd-42")))]
 compile_error!("The key-button feature is for a board with a KEY button: board-wave-esp32s3-rlcd-42.");
@@ -175,6 +238,8 @@ pub const fn board_name() -> &'static str {
         "wave-esp32c6-lcd-147"
     } else if cfg!(feature = "board-wave-esp32c6-touch-147") {
         "wave-esp32c6-touch-147"
+    } else if cfg!(feature = "board-wave-esp32s3-lcd-147") {
+        "wave-esp32s3-lcd-147"
     } else if cfg!(feature = "board-wave-esp32s3-rlcd-42") {
         "wave-esp32s3-rlcd-42"
     } else if cfg!(feature = "board-guition-jc3248w535c") {
@@ -196,6 +261,7 @@ mod http;
 mod led;
 #[cfg(not(feature = "sim"))]
 mod portal;
+mod reset;
 #[cfg(not(feature = "sim"))]
 pub mod smart_led;
 #[cfg(not(feature = "sim"))]

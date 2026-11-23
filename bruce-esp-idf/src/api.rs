@@ -35,10 +35,24 @@ use crate::identity::DeviceIdentity;
 /// The largest request body read, to protect the RAM.
 const MAX_BODY: usize = 8 * 1024;
 
+/// The port of the plain HTTP server for slow reads, see ApiServer::get_bulk, and its control port, after the HTTP
+/// server's 32768 and the API's 32769.
+pub const BULK_PORT: u16 = 8080;
+#[cfg(not(feature = "sim"))]
+const BULK_CTRL_PORT: u16 = 32770;
+/// How many connections the bulk server serves at once: the app's, and a peer's or two, see CaptureDevicePlan.md.
+#[cfg(not(feature = "sim"))]
+const BULK_CONNECTIONS: usize = 3;
+
 pub struct ApiServer {
     server: EspHttpServer<'static>,
     identity: Arc<DeviceIdentity>,
     adoption: Arc<Adoption>,
+    /// The plain HTTP server of the slow reads, e.g. a store's change feed, on BULK_PORT, a task of its own, so that a
+    /// page which takes a while does not stop the HTTP server answering everything else, as ESP-IDF's server answers
+    /// one request at a time, see get_bulk. None in the simulator, whose devices share a computer's ports, or if it
+    /// did not start, when they are served by the HTTP server, as before.
+    bulk: Option<EspHttpServerManager<'static>>,
 }
 
 impl ApiServer {
@@ -50,6 +64,15 @@ impl ApiServer {
         firmware: Firmware,
     ) -> anyhow::Result<ApiServer> {
         let identity = Arc::new(DeviceIdentity::load_or_create(nvs_partition)?);
+        #[cfg(not(feature = "sim"))]
+        let bulk = EspHttpServerManager::on_port(BULK_PORT, BULK_CTRL_PORT, BULK_CONNECTIONS)
+            .map_err(|error| {
+                log::warn!("Unable to start the HTTP server for slow reads on port {BULK_PORT}, {error:#}")
+            })
+            .ok();
+        #[cfg(feature = "sim")]
+        let bulk: Option<EspHttpServerManager<'static>> = None;
+        let bulk_port = bulk.as_ref().map(|_| BULK_PORT);
         let mut server = EspHttpServer::new(&Configuration {
             // Its own control port, as the HTTP server has the default one.
             ctrl_port: 32769,
@@ -70,7 +93,7 @@ impl ApiServer {
             respond(
                 request,
                 200,
-                &info(&info_identity, &info_config, &info_adoption, firmware),
+                &info(&info_identity, &info_config, &info_adoption, firmware, bulk_port),
             )
         })?;
         let info_identity = identity.clone();
@@ -80,7 +103,7 @@ impl ApiServer {
             respond(
                 request,
                 200,
-                &info(&info_identity, &info_config, &info_adoption, firmware),
+                &info(&info_identity, &info_config, &info_adoption, firmware, bulk_port),
             )
         })?;
 
@@ -172,7 +195,7 @@ impl ApiServer {
                 .stack_size(bruce_embedded_std::thread_stack(4096))
                 .spawn(|| {
                     std::thread::sleep(std::time::Duration::from_secs(1));
-                    unsafe { crate::sys::esp_restart() };
+                    crate::restart();
                 })?;
             Ok::<(), anyhow::Error>(())
         })?;
@@ -185,6 +208,7 @@ impl ApiServer {
             server,
             identity,
             adoption,
+            bulk,
         })
     }
 
@@ -229,6 +253,29 @@ impl ApiServer {
         })?;
         self.on(uri, Method::Get, move |request| f(request))
     }
+
+    /// Adds a handler for reading which may take a while, e.g. a page of a store's change feed, as get does, but served
+    /// over plain HTTP by the bulk server, on BULK_PORT, see ApiServer::bulk, so that it does not hold up the HTTP
+    /// server; by http if there is none. /api/info gives the port as bulkPort.
+    pub fn get_bulk<F>(
+        &mut self,
+        http: &mut EspHttpServerManager<'static>,
+        uri: &str,
+        f: F,
+    ) -> anyhow::Result<&mut Self>
+    where
+        F: for<'r> Fn(Request<&mut EspHttpConnection<'r>>) -> anyhow::Result<()> + Send + Sync + 'static,
+    {
+        match self.bulk.take() {
+            Some(mut bulk) => {
+                let result = self.get(&mut bulk, uri, f).map(|_| ());
+                self.bulk = Some(bulk);
+                result?;
+                Ok(self)
+            }
+            None => self.get(http, uri, f),
+        }
+    }
 }
 
 fn authorised(adoption: &Adoption, request: &Request<&mut EspHttpConnection<'_>>) -> bool {
@@ -245,7 +292,13 @@ pub(crate) fn unauthorised(request: Request<&mut EspHttpConnection<'_>>) -> anyh
 
 /// What the device is: its ID, board, firmware, certificate fingerprint, whether it has been adopted, how long it has
 /// been running, why it last started, and if it crashed, why, see panics.rs, its memory, and its features.
-fn info(identity: &DeviceIdentity, config_manager: &ConfigManager, adoption: &Adoption, firmware: Firmware) -> Value {
+fn info(
+    identity: &DeviceIdentity,
+    config_manager: &ConfigManager,
+    adoption: &Adoption,
+    firmware: Firmware,
+    bulk_port: Option<u16>,
+) -> Value {
     let features: Vec<Value> = config_manager
         .features
         .values()
@@ -266,6 +319,8 @@ fn info(identity: &DeviceIdentity, config_manager: &ConfigManager, adoption: &Ad
         "adopted": adoption.is_adopted(),
         "upTimeSeconds": unsafe { crate::sys::esp_timer_get_time() } / 1_000_000,
         "resetReason": crate::reset_reason(),
+        // Where the slow reads are served, see ApiServer::get_bulk; on the HTTP port if there is none.
+        "bulkPort": bulk_port,
         "lastCrash": crate::panics::last(),
         "freeHeap": unsafe { crate::sys::esp_get_free_heap_size() },
         "minimumFreeHeap": unsafe { crate::sys::esp_get_minimum_free_heap_size() },

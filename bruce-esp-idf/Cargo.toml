@@ -1,6 +1,6 @@
 [package]
 name = "bruce-esp-idf"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Bruce's ESP-IDF Platform: bruce-embedded-std on ESP32 boards, with Wi-Fi, an HTTP server, settings in NVS and drivers for each board's hardware"
@@ -43,12 +43,12 @@ nalgebra = {version="0.34.2", optional = true}
 
 
 # The hardware agnostic platform, and the record each firmware image carries, from the repositories next to this one.
-bruce-embedded-std = "0.2.0"
+bruce-embedded-std = "0.3.0"
 bruce-embedded-firmware-record = "0.1.0"
 
 # The platform on a desktop computer, with the sim feature, see src/sim/mod.rs: the simulated board, its HTTPS
 # certificate, its log, and the folder it keeps its data in.
-bruce-embedded-sim = { version = "0.2.0", features = ["svc"], optional = true }
+bruce-embedded-sim = { version = "0.3.0", features = ["svc"], optional = true }
 rcgen = { version = "0.13", default-features = false, features = ["ring", "pem"], optional = true }
 rustls-pki-types = { version = "1", features = ["std"], optional = true }
 env_logger = { version = "0.11", optional = true }
@@ -89,7 +89,7 @@ imu = []
 touch-driver = []
 qmi8658 = ["imu", "i2c"]
 speaker = ["i2c"]  # The board's speaker: an ES8311 codec on its I2C bus, I2S and an amplifier, see speaker.rs and Esp32Platform::speaker
-battery = []     # The board's battery's voltage, on an ADC pin, see battery.rs and Esp32Platform::battery. Board must have one (board-wave-esp32s3-rlcd-42, GPIO4).
+battery = []     # The board's battery's voltage, on an ADC pin, see battery.rs and Esp32Platform::battery. Board must have one (board-wave-esp32s3-rlcd-42, GPIO4, board-wave-esp32s3-lcd-147, GPIO1).
 shtc3 = ["i2c"]  # The SHTC3 temperature and humidity sensor on the board's I2C bus, see shtc3.rs and Esp32Platform::shtc3
 AXS5106L = ["touch-driver"]
 touch-axs15231b = ["touch-driver"]  # The AXS15231B's touch, read over its own I2C bus, see touch/axs15231b.rs
@@ -98,6 +98,7 @@ touch-axs15231b = ["touch-driver"]  # The AXS15231B's touch, read over its own I
 board-cyd-esp32-28 = ["rgb-led", "mipi-dsi-display", "smart-led-spi"]
 board-wave-esp32c6-touch-147 = ["mipi-dsi-display", "mipi-dsi-display-reset", "qmi8658", "AXS5106L"] # seems to work with the ST7789 driver. , "display-jd9853"
 board-wave-esp32c6-lcd-147 = ["mipi-dsi-display", "mipi-dsi-display-reset"]
+board-wave-esp32s3-lcd-147 = ["mipi-dsi-display", "mipi-dsi-display-reset", "qmi8658", "battery", "sd-card"] # Waveshare ESP32-S3-LCD-1.47B: ESP32-S3R8 (8 MB PSRAM), 16 MB flash, 1.47" 172x320 ST7789 LCD, QMI8658 IMU, SDMMC slot (4-bit, off the headers, so always on), battery charger.
 board-seeed-esp32c6-xiao = ["mono-led"]
 board-esp32-devkit-v1 = ["mono-led", "smart-led-spi"]
 board-esp32c3-supermini = ["mono-led", "smart-led-spi"]
@@ -107,9 +108,9 @@ board-wave-esp32s3-rlcd-42 = ["display-st7305", "shtc3", "speaker", "battery"] #
 # Optional features which may be enabled by clients to enable extra capabilities. Usually these require some specific hardware,
 # checks in builrd.rs will prevent compilation succeeding where required hardware is not available on the seleted board.
 ahrs = ["bruce-embedded-std/ahrs", "dep:nalgebra"]     # Attitude and Heading Reference System. Requires imu hardware
-boot-button = []                        # The BOOT button, GPIO0, as a button once the board has started, owned by the platform, see Esp32Platform::boot_button and Esp32PlatformBuilder::with_boot_button. Board must be one whose BOOT button the platform does not use itself (board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c).
+boot-button = []                        # The BOOT button, GPIO0, as a button once the board has started, owned by the platform, see Esp32Platform::boot_button and Esp32PlatformBuilder::with_boot_button. Board must be one whose BOOT button the platform does not use itself (board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c, board-wave-esp32s3-lcd-147).
 key-button = []                         # The board's KEY button, GPIO18 on board-wave-esp32s3-rlcd-42, owned by the platform, see Esp32Platform::key_button and Esp32PlatformBuilder::with_key_button. Takes its pin, which is then not in the Remainder. Board must have one (board-wave-esp32s3-rlcd-42).
-sd-card = []                            # The board's SD card slot, mounted at /sd, see sd_card.rs. Takes its pins and SPI bus (SPI3 on the CYD; the display's, shared, and GPIO4 on board-wave-esp32c6-touch-147), which are then not in the Remainder. Board must have one (board-cyd-esp32-28, board-wave-esp32c6-touch-147, board-wave-esp32s3-rlcd-42, which has it on SDMMC: GPIO21, 38, 39, board-guition-jc3248w535c, SPI3: GPIO10, 11, 12, 13).
+sd-card = []                            # The board's SD card slot, mounted at /sd, see sd_card.rs. Takes its pins and SPI bus (SPI3 on the CYD; the display's, shared, and GPIO4 on board-wave-esp32c6-touch-147), which are then not in the Remainder. Board must have one (board-cyd-esp32-28, board-wave-esp32c6-touch-147, board-wave-esp32s3-rlcd-42, which has it on SDMMC: GPIO21, 38, 39, board-guition-jc3248w535c, SPI3: GPIO10, 11, 12, 13, and board-wave-esp32s3-lcd-147, which turns it on itself, as its slot's pins, SDMMC: GPIO14, 15, 16, 17, 18, 21, are not on its headers).
 tilt = ["bruce-embedded-std/tilt", "dep:nalgebra"]     # Tilt sensor. Requires imu hardware
 touch = []                              # Touch input. Requires touch-driver hardware
 

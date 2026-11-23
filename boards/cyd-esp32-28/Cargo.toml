@@ -1,6 +1,6 @@
 [package]
 name = "bruce-esp-idf-example-cyd-esp32-28"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2024"
 resolver = "2"
 license = "MIT OR Apache-2.0"
@@ -16,7 +16,7 @@ anyhow = "1.0.102"
 croner = "3.0.1"
 chrono = "0.4.44"
 
-bruce-embedded-std = "0.2.0"
+bruce-embedded-std = "0.3.0"
 bruce-esp-idf = { path = "../../bruce-esp-idf", features = ["board-cyd-esp32-28"]}
 
 
@@ -31,13 +31,11 @@ esp-idf-hal = { version = "0.46.2", optional = true }
 esp-idf-sys = { version = "0.37.2", features = ["binstart"], optional = true }
 futures = { version = "0.3.32", optional = true }
 smart-leds = "0.4.0"
-# TODO: a checkout of upstream's v0.14.0 next to this repository, with uncommitted changes for the CYD's LED: the RMT clock
-# divided by 8, the line held low when idle, and a 50 us reset after each write. It builds only where that checkout is,
-# which the split leaves as it is, as the board stays the same depth below ~/git. To fix later: try crates.io's 0.15.0, now from
-# cat-in-136/ws2812-esp32-rmt-smart-leds, which may need no fix; else offer the fix upstream, or use a git dependency
-# on a fork meanwhile. Left as it is for now, 12 Nov 2026.
-#ws2812-esp32-rmt-driver = { version = "0.13.1", features = ["smart-leds-trait"] }
-ws2812-esp32-rmt-driver = { path = "../../../ws2812-esp32-rmt-driver", features = ["smart-leds-trait"] }
+# The CYD's RGB LED's driver, as published, 23 Nov 2026, in place of a local checkout of 0.14.0 patched for the CYD's
+# LED (the RMT clock divided by 8, the line held low when idle, a 50 us reset after each write), so the LED may
+# misbehave. 0.15.0, from cat-in-136/ws2812-esp32-rmt-smart-leds, may need no fix, but needs esp-idf-hal 0.47, so waits
+# for the platform to move to it; else offer the fix upstream.
+ws2812-esp32-rmt-driver = { version = "0.14.0", features = ["smart-leds-trait"] }
 
 
 [features]

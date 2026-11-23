@@ -134,7 +134,7 @@ pub struct MipiDsiDisplayManager {
     #[cfg(feature = "board-wave-esp32c6-touch-147")]
     // pub display: mipidsi::Display<crate::display_mipidsi::EspDi, mipidsi::models::ILI9341Rgb565, PinDriver<'static, esp_idf_hal::gpio::Output>>,
     pub display: mipidsi::Display<EspDi, mipidsi::models::ST7789, PinDriver<'static, esp_idf_hal::gpio::Output>>,
-    #[cfg(feature = "board-wave-esp32c6-lcd-147")]
+    #[cfg(any(feature = "board-wave-esp32c6-lcd-147", feature = "board-wave-esp32s3-lcd-147"))]
     pub display: mipidsi::Display<EspDi, mipidsi::models::ST7789, PinDriver<'static, esp_idf_hal::gpio::Output>>,
 }
 
@@ -146,7 +146,7 @@ impl DisplayManager for MipiDsiDisplayManager {
     #[cfg(feature = "board-wave-esp32c6-touch-147")]
     // type Display = mipidsi::Display<crate::display_mipidsi::EspDi, mipidsi::models::ILI9341Rgb565, PinDriver<'static, esp_idf_hal::gpio::Output>>;
     type Display = mipidsi::Display<EspDi, mipidsi::models::ST7789, PinDriver<'static, esp_idf_hal::gpio::Output>>;
-    #[cfg(feature = "board-wave-esp32c6-lcd-147")]
+    #[cfg(any(feature = "board-wave-esp32c6-lcd-147", feature = "board-wave-esp32s3-lcd-147"))]
     type Display = mipidsi::Display<EspDi, mipidsi::models::ST7789, PinDriver<'static, esp_idf_hal::gpio::Output>>;
 
     fn display(&mut self) -> &mut Self::Display {

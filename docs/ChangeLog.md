@@ -1,5 +1,29 @@
 # ChangeLog
 
+# Release 0.3.0
+
+## New
+
+- **The Waveshare ESP32-S3-LCD-1.47B**, `board-wave-esp32s3-lcd-147`, with its display, SD card, IMU, battery, RGB LED
+  and BOOT button, and a demo in `boards/`.
+- The device advertises itself by mDNS as `_bruce-device._tcp`, with its ID, board, chip, firmware and its version,
+  the platform's version, and whether it is adopted, in its TXT record, to which firmware can add its own facts, and
+  as `_http._tcp` for its web page.
+- Two resets on the device's commands: **Reset Settings, Keep the Wi-Fi**, which keeps its network settings and name,
+  and **Factory Reset, Erase Everything**.
+- A plain HTTP server for slow reads, on port 8080, `BULK_PORT`, `api_get_bulk`, so that a long read, e.g. a page of a
+  store's change feed, does not hold up the HTTPS server, which answers one request at a time. `/api/info` gives its
+  port as `bulkPort`.
+- `restart`, which unmounts the SD card before restarting, and `mac_id`, the device's ID from its Wi-Fi MAC address.
+- docs/Hardware.md: each board, what it has and what the platform drives, and the SD cards which have been tried.
+
+## Fixed
+
+- The SD card is unmounted before the device restarts, e.g. after a change to its settings, so that what was written
+  is not lost and the card comes back afterwards.
+- The boards' demos have a main stack large enough for mDNS and the platform's other services, rather than
+  overflowing on a board such as the ESP32-C6.
+
 # Release 0.2.0
 
 ## New

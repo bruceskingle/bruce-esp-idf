@@ -284,7 +284,7 @@ dependencies = [
 
 [[package]]
 name = "bruce-esp-idf"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "bruce-embedded-firmware-record",
@@ -317,7 +317,7 @@ dependencies = [
 
 [[package]]
 name = "bruce-esp-idf-example-wave-esp32s3-rlcd-42"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "bruce-embedded-std",

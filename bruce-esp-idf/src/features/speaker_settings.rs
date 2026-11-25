@@ -1,8 +1,6 @@
 //! The board's speaker's settings: its volume, which every sound plays at, see speaker.rs. The platform adds it on a
 //! board with a speaker, see the speaker feature.
 
-use std::time::Duration;
-
 use crate::svc::http::Method;
 use bruce_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
 // Not needed with the simulator's Request, whose read is its own.
@@ -14,16 +12,23 @@ use crate::http::EspHttpServerManager;
 use crate::speaker::Speaker;
 use crate::{Esp32Platform, Esp32PlatformInitializer, Feature, FeatureDescriptor};
 
+/// The volume, in percent, until one is saved: the codec's full level, but three quarters of it on the Waveshare
+/// ESP32-S3-DualEye-LCD-1.28, whose speaker is loud enough at full level to be too loud.
+#[cfg(feature = "board-wave-esp32s3-dualeye-128")]
+pub const DEFAULT_VOLUME: u8 = 75;
+#[cfg(not(feature = "board-wave-esp32s3-dualeye-128"))]
+pub const DEFAULT_VOLUME: u8 = 100;
+
 #[derive(FeatureConfig)]
 #[config(label = "Speaker")]
 pub struct SpeakerConfig {
-    /// In percent, see Speaker::set_volume. 100 if not set. A slider, which plays a tone at each volume it is moved
-    /// to, see PREVIEW.
+    /// In percent, see Speaker::set_volume. DEFAULT_VOLUME if not set. A slider, which plays a sound at each volume it is moved to,
+    /// see PREVIEW, a beep unless the firmware chose another, see Speaker::set_preview_wav.
     #[config(
         label = "Volume (%)",
         min = 0,
         max = 100,
-        default = 100,
+        default = DEFAULT_VOLUME,
         preview = "/speaker/preview"
     )]
     pub volume: Option<i32>,
@@ -52,9 +57,9 @@ impl Feature for SpeakerSettings {
     }
 }
 
-/// The volume config sets, in percent, 100 if it is not set.
+/// The volume config sets, in percent, DEFAULT_VOLUME if it is not set.
 pub(crate) fn volume(config: &SpeakerConfig) -> u8 {
-    config.volume.unwrap_or(100).clamp(0, 100) as u8
+    config.volume.unwrap_or(DEFAULT_VOLUME as i32).clamp(0, 100) as u8
 }
 
 /// The config page's volume slider POSTs each volume it is moved to here, as value=N, see Slider::preview.
@@ -77,10 +82,7 @@ pub(crate) fn add_preview(server_manager: &mut EspHttpServerManager<'static>, sp
             .and_then(|(_, value)| value.parse::<i32>().ok());
         match volume {
             Some(volume) => {
-                if let Err(error) = speaker.play_at(
-                    volume.clamp(0, 100) as u8,
-                    &crate::speaker::tone(880.0, Duration::from_millis(120)),
-                ) {
+                if let Err(error) = speaker.preview(volume.clamp(0, 100) as u8) {
                     warn!("Unable to play the volume's preview: {error:#}");
                 }
                 request.into_ok_response()?;

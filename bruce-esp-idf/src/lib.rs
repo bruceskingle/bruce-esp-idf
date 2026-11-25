@@ -45,6 +45,8 @@ pub mod shtc3;
 pub mod speaker;
 
 #[cfg(esp_idf_esp_https_server_enable)]
+pub mod access;
+#[cfg(esp_idf_esp_https_server_enable)]
 pub mod adoption;
 #[cfg(esp_idf_esp_https_server_enable)]
 #[cfg_attr(feature = "sim", path = "sim/identity.rs")]
@@ -211,11 +213,12 @@ pub fn reset_reason() -> &'static str {
     not(any(
         feature = "board-wave-esp32s3-rlcd-42",
         feature = "board-guition-jc3248w535c",
-        feature = "board-wave-esp32s3-lcd-147"
+        feature = "board-wave-esp32s3-lcd-147",
+        feature = "board-wave-esp32s3-dualeye-128"
     ))
 ))]
 compile_error!(
-    "The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c, board-wave-esp32s3-lcd-147."
+    "The boot-button feature is for a board whose BOOT button the platform does not use: board-wave-esp32s3-rlcd-42, board-guition-jc3248w535c, board-wave-esp32s3-lcd-147, board-wave-esp32s3-dualeye-128."
 );
 // The QMI8658's driver is in the ahrs module, which only the tilt and ahrs features build, so a board with one needs
 // either, rather than failing to compile somewhere less clear.
@@ -240,6 +243,8 @@ pub const fn board_name() -> &'static str {
         "wave-esp32c6-touch-147"
     } else if cfg!(feature = "board-wave-esp32s3-lcd-147") {
         "wave-esp32s3-lcd-147"
+    } else if cfg!(feature = "board-wave-esp32s3-dualeye-128") {
+        "wave-esp32s3-dualeye-128"
     } else if cfg!(feature = "board-wave-esp32s3-rlcd-42") {
         "wave-esp32s3-rlcd-42"
     } else if cfg!(feature = "board-guition-jc3248w535c") {

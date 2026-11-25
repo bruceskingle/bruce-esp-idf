@@ -10,6 +10,7 @@ it offers, are described in the README's [Board Capabilities](../README.md#board
 |---|---|---|---|---|---|---|
 | [Waveshare ESP32-S3-LCD-1.47B](#waveshare-esp32-s3-lcd-147b) | `board-wave-esp32s3-lcd-147` | ESP32-S3R8, 16 MB flash | 8 MB | 1.47" colour, 172 × 320 | SDMMC, 4 lines | Yes, daily, as a capture device |
 | [Waveshare ESP32-S3-RLCD-4.2](#waveshare-esp32-s3-rlcd-42) | `board-wave-esp32s3-rlcd-42` | ESP32-S3, N16R8 module | 8 MB | 4.2" reflective, black and white, 400 × 300 | SDMMC, 1 line | Yes, daily, as a capture device |
+| [Waveshare ESP32-S3-DualEye-LCD-1.28](#waveshare-esp32-s3-dualeye-lcd-128) | `board-wave-esp32s3-dualeye-128` | ESP32-S3R8, 16 MB flash | 8 MB | Two 1.28" round colour, 240 × 240 each | SDMMC, 1 line | Its example: both screens, the SD card |
 | [Guition JC3248W535C](#guition-jc3248w535c) | `board-guition-jc3248w535c` | ESP32-S3, N16R8 | 8 MB | 3.5" colour, 320 × 480, touch | SPI | Yes, daily, as a capture device |
 | [Waveshare ESP32-C6-Touch-LCD-1.47](#waveshare-esp32-c6-touch-lcd-147) | `board-wave-esp32c6-touch-147` | ESP32-C6, one core | None | 1.47" colour, 172 × 320, touch | SPI, shared with the display | Yes, daily, as a capture device |
 | [Waveshare ESP32-C6-LCD-1.47](#waveshare-esp32-c6-lcd-147) | `board-wave-esp32c6-lcd-147` | ESP32-C6, one core | None | 1.47" colour, 172 × 320 | Not driven | Its example |
@@ -71,6 +72,40 @@ whose ESP32-S3-WROOM-1-N16R8 module has two cores, 16 MB of flash and 8 MB of PS
 There is no reset button: unplug it, use the config page's **Restart** command, or reset it over USB. The example, in
 `boards/wave-esp32s3-rlcd-42`, plays `sounds/Startup.wav` as it starts, and shows an analog clock, the SD card's size
 and free space when KEY is pressed, and the temperature and humidity when BOOT is pressed, each with a beep.
+
+### Waveshare ESP32-S3-DualEye-LCD-1.28
+
+The [Waveshare ESP32-S3-DualEye-LCD-1.28](https://docs.waveshare.com/ESP32-S3-DualEye-LCD-1.28), a pair of eyes: two
+small boards, LCD1 with the ESP32-S3R8 (two cores, 8 MB of PSRAM, 16 MB of flash) and LCD2, joined by a flat cable, each
+behind a round screen. The board feature is for the version without touch; the Touch version, the
+ESP32-S3-DualEye-Touch-LCD-1.28, has a CST816 touch controller behind each screen, which the platform does not drive,
+on pins which the board without touch leaves free. It comes with:
+
+- two 1.28-inch round colour LCDs, 240 × 240, with GC9A01 controllers, on one SPI bus (GPIO41 SCLK, 42 MOSI, 45 DC),
+  each with its own chip select, reset and backlight. The left one, LCD1, is the platform's display; `right()` and
+  `eyes()` on the display manager give the other. `with_display_orientation(DisplayOrientation::Rotate180)` is for
+  the board turned half way round, its USB port at the top: each screen's picture is turned, and they swap sides.
+  Each is drawn in a framebuffer in PSRAM, whose changed rows are sent at 80 MHz, as Waveshare's demo does. Only the
+  circle can be seen, so the platform's status is shown in the square inside it. Both backlights follow the **Screen**
+  setting, and are dimmed by PWM, on LEDC's timer 0 and channels 0 and 1, with `set_brightness(percent)` on the
+  display manager;
+- a microSD card slot, wired for SDMMC with one data line (GPIO17 CLK, 18 D0, 21 CMD), whose pins are not on a header,
+  so the board feature turns on `sd-card` itself;
+- an ES8311 audio codec and NS4150B amplifier, with a connector for the speaker which comes with it, which the platform
+  always drives, at 75% until a volume is saved, as it is loud at full volume, and an ES7210 ADC with a microphone, which it does not drive yet, on an I2C bus (GPIO11 SDA, 10 SCL)
+  which more devices can join, using `platform.i2c()`;
+- a battery connector, with charging, whose voltage the platform reads on GPIO1;
+- BOOT and RESET buttons. BOOT, GPIO0, can be used as a button once the board has started (the `boot-button` feature);
+- a 14-pin SH1.0 header on LCD1's board, with USB 5V, 3V3, two grounds, RESET, GPIO 0, the USB port (19, 20), the I2C
+  bus, UART0 (44 RXD, 43 TXD), and GPIO 3 and 2, the Touch version's second touch bus; and a 14-pin SH1.0 header on
+  LCD2's board, for driving LCD2 when the boards are broken apart, which also brings out GPIO 7 and 6. Without touch,
+  GPIO 2, 3, 6 and 7 are free, in the `Remainder`, with GPIO 0 (unless `boot-button` takes it), UART1, I2C1, SPI3 and
+  the RMT. GPIO 43 and 44, and UART0, are in the `Remainder` too when the console is the USB port,
+  `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` in the project's `sdkconfig.defaults`, as the example's is; otherwise the
+  platform's log is written to them.
+
+The example, in `boards/wave-esp32s3-dualeye-128`, shows an analog clock on the left screen and an eye on the right,
+with TOP written above it, to check which way up it is, and BOOT plays a beep.
 
 ### Guition JC3248W535C
 

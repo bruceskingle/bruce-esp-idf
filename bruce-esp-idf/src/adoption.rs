@@ -8,6 +8,9 @@
 //!    Authorization: Bearer <key>, which HTTPS keeps secret, or, for reading over plain HTTP, which costs the device
 //!    far less RAM than HTTPS, signed with it, see is_signed, so that the key is never sent where it can be seen.
 //!
+//! The firmware may also give the platform an Authoriser, see access.rs, which decides the requests in its scheme, e.g.
+//! signed by one of the site's principals, see Adoption::check; the key goes on working alongside it.
+//!
 //! A code lasts PAIRING_TIME and MAX_ATTEMPTS wrong guesses, after which pairing must start again, which needs someone
 //! to read the screen. The app releases the device through the API when it no longer manages it, or if the app has
 //! lost the key, holding the BOOT button for RELEASE_HOLD does, see watch_boot_button.
@@ -23,6 +26,7 @@ use anyhow::{anyhow, bail};
 use bruce_embedded_std::config_manager::ConfigManager;
 use log::{info, warn};
 
+use crate::access::{Access, Authoriser, SignedRequest};
 use crate::identity::DEVICE_NAMESPACE;
 
 const KEY_KEY: &str = "api_key";
@@ -57,6 +61,8 @@ pub struct Adoption {
     nvs: Mutex<EspNvs<NvsDefault>>,
     state: Mutex<State>,
     config_manager: Arc<ConfigManager>,
+    /// What decides the requests in its scheme, given by the firmware, see set_authoriser.
+    authoriser: Mutex<Option<Arc<dyn Authoriser>>>,
 }
 
 impl Adoption {
@@ -80,7 +86,63 @@ impl Adoption {
                 notice: None,
             }),
             config_manager,
+            authoriser: Mutex::new(None),
         }))
+    }
+
+    /// Has authoriser decide the requests whose Authorization header is in its scheme, see check.
+    pub fn set_authoriser(&self, authoriser: Arc<dyn Authoriser>) {
+        *self.authoriser.lock().unwrap() = Some(authoriser);
+    }
+
+    /// The authoriser's info, for /api/info, None if there is none.
+    pub fn authoriser_info(&self) -> Option<serde_json::Value> {
+        self.authoriser().map(|authoriser| authoriser.info())
+    }
+
+    fn authoriser(&self) -> Option<Arc<dyn Authoriser>> {
+        self.authoriser.lock().unwrap().clone()
+    }
+
+    /// Ok if a request of method for uri, its path and query, with this Authorization header and body, may do what
+    /// access says, over HTTPS if https, otherwise why not. Any may if the device has not been adopted. One in the
+    /// authoriser's scheme, see set_authoriser, is decided by it; any other needs the key, as Bearer over HTTPS, see
+    /// is_authorised, or signed with it over plain HTTP, for reading, see is_signed. Neither looks at access, as the
+    /// one app holding the key may do anything.
+    pub fn check(
+        &self,
+        method: &str,
+        uri: &str,
+        authorization: Option<&str>,
+        body: &[u8],
+        access: Access,
+        https: bool,
+    ) -> anyhow::Result<()> {
+        if !self.is_adopted() {
+            return Ok(());
+        }
+        if let (Some(authoriser), Some(header)) = (self.authoriser(), authorization)
+            && header.starts_with(authoriser.scheme())
+        {
+            return authoriser.allows(
+                &SignedRequest {
+                    method,
+                    uri,
+                    authorization: header,
+                    body,
+                },
+                access,
+            );
+        }
+        let allowed = if https {
+            self.is_authorised(authorization)
+        } else {
+            self.is_signed(method, uri, authorization)
+        };
+        if !allowed {
+            bail!("the device has been adopted, and this needs the adopting app's key, or a site member's signature");
+        }
+        Ok(())
     }
 
     pub fn is_adopted(&self) -> bool {
@@ -89,7 +151,7 @@ impl Adoption {
 
     /// Whether a request with this Authorization header may use the API: any if the device has not been adopted,
     /// otherwise only one with the key.
-    pub fn is_authorised(&self, authorization: Option<&str>) -> bool {
+    fn is_authorised(&self, authorization: Option<&str>) -> bool {
         let state = self.state.lock().unwrap();
         let Some(key) = &state.key else {
             return true;
@@ -107,7 +169,7 @@ impl Adoption {
     /// and the signature the HMAC-SHA256, as hex, with the key, as its 32 bytes, of "<method> <uri> <time>", e.g.
     /// "GET /api/capture/tesla/records?since=2026-10-30T06:00:00Z 1793340000". Someone who sees a request can only
     /// make it again, within the window, which for reading does no harm.
-    pub fn is_signed(&self, method: &str, uri: &str, authorization: Option<&str>) -> bool {
+    fn is_signed(&self, method: &str, uri: &str, authorization: Option<&str>) -> bool {
         use hmac::Mac;
 
         let state = self.state.lock().unwrap();
@@ -220,6 +282,10 @@ impl Adoption {
         state.pairing = None;
         state.notice = Some(("Released", Instant::now() + NOTICE_TIME));
         self.config_manager.set_managed(false);
+        drop(state);
+        if let Some(authoriser) = self.authoriser() {
+            authoriser.released();
+        }
         info!("The device has been released");
         Ok(())
     }

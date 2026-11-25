@@ -435,6 +435,52 @@ impl Esp32Platform {
         Ok(())
     }
 
+    /// Adds a handler for reading which needs access, see ApiServer::get_as, to the API, if it is running, so also over
+    /// plain HTTP, e.g. for what only those who manage the device may read.
+    pub fn api_get_as<F>(&mut self, uri: &str, access: crate::access::Access, f: F) -> anyhow::Result<()>
+    where
+        F: for<'r> Fn(
+                crate::svc::http::server::Request<&mut crate::svc::http::server::EspHttpConnection<'r>>,
+            ) -> anyhow::Result<()>
+            + Send
+            + Sync
+            + 'static,
+    {
+        if let Some(api_server) = self.api_server.as_mut() {
+            api_server.get_as(&mut self.server_manager, uri, access, f)?;
+        }
+        Ok(())
+    }
+
+    /// Adds a handler of POSTs which needs access, given the request's body, see ApiServer::post, to the API, if it is
+    /// running, over HTTPS only.
+    pub fn api_post<F>(&mut self, uri: &str, access: crate::access::Access, f: F) -> anyhow::Result<()>
+    where
+        F: for<'r> Fn(
+                crate::svc::http::server::Request<&mut crate::svc::http::server::EspHttpConnection<'r>>,
+                Vec<u8>,
+            ) -> anyhow::Result<()>
+            + Send
+            + 'static,
+    {
+        if let Some(api_server) = self.api_server.as_mut() {
+            api_server.post(uri, access, f)?;
+        }
+        Ok(())
+    }
+
+    /// Has authoriser decide the API requests in its scheme, e.g. those signed by the site's principals, see
+    /// access.rs; the adopting app's key goes on working alongside it.
+    pub fn set_authoriser(&self, authoriser: std::sync::Arc<dyn crate::access::Authoriser>) {
+        self.adoption.set_authoriser(authoriser);
+    }
+
+    /// The NVS partition, for firmware to keep what must not be on an SD card in a namespace of its own, e.g. a
+    /// private key.
+    pub fn nvs_partition(&self) -> crate::svc::nvs::EspNvsPartition<crate::svc::nvs::NvsDefault> {
+        self.nvs_partition.clone()
+    }
+
     pub fn device_id(&self) -> Option<String> {
         self.api_server
             .as_ref()
@@ -589,7 +635,7 @@ impl Esp32Platform {
         {
             let nvs_partition = self.nvs_partition.clone();
             let firmware = self.firmware;
-            self.api_get("/api/starts", move |request| {
+            self.api_get_as("/api/starts", crate::access::Access::Manage, move |request| {
                 let mut response = request.into_response(200, None, &[("Content-Type", "application/json")])?;
                 crate::starts::write_json(&nvs_partition, firmware, &mut |bytes| {
                     Ok(crate::svc::io::Write::write_all(&mut response, bytes)?)

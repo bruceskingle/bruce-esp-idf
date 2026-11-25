@@ -22,3 +22,5 @@ target-doc/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 /.cargo/config.toml
+# Claude Code project locks
+.claude-lock.json

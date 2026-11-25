@@ -49,6 +49,9 @@
 		},
 		{
 			"path": "../bruce-quiz-library"
+		},
+		{
+			"path": "../bruce-unifi-tools"
 		}
 	],
 	"settings": {

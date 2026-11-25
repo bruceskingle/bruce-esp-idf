@@ -340,6 +340,45 @@ pub struct Remainder {
     pub rmt: esp_idf_hal::rmt::RMT,
 }
 
+/// The Waveshare ESP32-S3-DualEye-LCD-1.28, without touch, whose on-board hardware uses: the two displays' SPI bus
+/// (GPIO41 SCLK, 42 MOSI, 40 MISO, not read, 45 DC), LCD1's, the left's, chip select, reset and backlight (47, 48, 46),
+/// and LCD2's (38, 8, 39), the SD card (17 CLK, 18 D0, 21 CMD), the I2C bus of the audio codec and the microphones' ADC
+/// (11 SDA, 10 SCL, on I2C0), the speaker's I2S and amplifier (12 MCLK, 13 BCLK, 14 WS, 16 DOUT, 9), the microphones'
+/// I2S data (15, not driven yet), the battery's voltage (1), and the USB port (19, 20). The touch version's first
+/// touch controller's reset and interrupt, 4 and 5, go only to LCD1's connector.
+///
+/// Its 14-pin SH1.0 header, on the LCD1 board, brings out USB 5V, 3V3, two grounds, RESET, GPIO 0, the USB port, the
+/// I2C bus (11, 10), which more devices can join, see Esp32Platform::i2c, UART0 (44 RXD, 43 TXD), and the touch
+/// version's second touch controller's bus (3 SDA, 2 SCL); the LCD2 board's 14-pin header, for driving LCD2 when the
+/// boards are broken apart, also brings out that controller's interrupt and reset (7, 6). Without touch, 2, 3, 6 and 7
+/// are free, and here. 0 is the BOOT button, here unless the boot-button feature takes it, a strapping pin, which
+/// should not be pulled low as the chip starts. UART0 and its pins are here only when the console is the chip's own
+/// USB port, `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` in the project's sdkconfig.defaults, as the example's is, as
+/// otherwise the platform's log is written to them.
+#[cfg(feature = "board-wave-esp32s3-dualeye-128")]
+pub struct Remainder {
+    /// The BOOT button. Not with the boot-button feature, with which the platform wires it, see
+    /// Esp32PlatformBuilder::with_boot_button.
+    #[cfg(not(feature = "boot-button"))]
+    pub gpio0: esp_idf_hal::gpio::Gpio0<'static>,
+    pub gpio2: esp_idf_hal::gpio::Gpio2<'static>,
+    pub gpio3: esp_idf_hal::gpio::Gpio3<'static>,
+    pub gpio6: esp_idf_hal::gpio::Gpio6<'static>,
+    pub gpio7: esp_idf_hal::gpio::Gpio7<'static>,
+    /// UART0's TXD, only when the console is the USB port, see above.
+    #[cfg(esp_idf_esp_console_usb_serial_jtag)]
+    pub gpio43: esp_idf_hal::gpio::Gpio43<'static>,
+    /// UART0's RXD, only when the console is the USB port, see above.
+    #[cfg(esp_idf_esp_console_usb_serial_jtag)]
+    pub gpio44: esp_idf_hal::gpio::Gpio44<'static>,
+    #[cfg(esp_idf_esp_console_usb_serial_jtag)]
+    pub uart0: esp_idf_hal::uart::UART0<'static>,
+    pub uart1: esp_idf_hal::uart::UART1<'static>,
+    pub i2c1: esp_idf_hal::i2c::I2C1<'static>,
+    pub spi3: esp_idf_hal::spi::SPI3<'static>,
+    pub rmt: esp_idf_hal::rmt::RMT,
+}
+
 /// The Guition JC3248W535C, whose on-board hardware uses: the display's QSPI bus (GPIO21, 39, 40, 45, 47, 48, TE on
 /// 38) and backlight (1), the SD card (10, 11, 12, 13), the I2S amplifier (2, 41, 42), and BOOT (0). Its touch, on
 /// I2C (4 SDA, 8 SCL), on I2C0, see touch/axs15231b.rs. Its headers bring out GPIO5, 6,
@@ -458,6 +497,9 @@ pub struct Esp32PlatformBuilder {
     /// The display, started, and cleared to black, see axs15231b.rs.
     #[cfg(feature = "display-axs15231b")]
     axs15231b: crate::display::axs15231b::Axs15231b,
+    /// The pair of displays, started, and cleared to black, see gc9a01_dual.rs.
+    #[cfg(feature = "display-gc9a01-dual")]
+    gc9a01: crate::display::gc9a01_dual::Gc9a01Dual,
     /// The board's buttons, see Esp32Platform::key_button and boot_button.
     #[cfg(feature = "key-button")]
     key_button: crate::push_button::PushButton,
@@ -914,6 +956,116 @@ impl Esp32PlatformBuilder {
             (remainder, st7305)
         };
 
+        // The LiPo cell's voltage, a third of it, on GPIO1, see battery.rs. A failure to set up the ADC is logged rather
+        // than stopping the board, as it can run without knowing.
+        #[cfg(all(feature = "board-wave-esp32s3-dualeye-128", feature = "battery"))]
+        let battery = crate::battery::Battery::new(peripherals.adc1, peripherals.pins.gpio1)
+            .map_err(|error| log::warn!("Unable to read the battery: {error:#}"))
+            .ok()
+            .map(Arc::new);
+        // The SD card slot, mounted here, not in build, so that the card is there whatever else fails.
+        #[cfg(all(feature = "board-wave-esp32s3-dualeye-128", feature = "sd-card"))]
+        let sd_card = crate::sd_card::mount_mmc(
+            peripherals.sdmmc1,
+            peripherals.pins.gpio21, // CMD
+            peripherals.pins.gpio17, // CLK
+            peripherals.pins.gpio18, // D0
+        )
+        .map_err(|error| {
+            log::warn!("No SD card: {error:#}");
+            format!("{error:#}")
+        });
+        #[cfg(feature = "board-wave-esp32s3-dualeye-128")]
+        let (remainder, i2c, speaker, gc9a01) = {
+            use esp_idf_hal::{
+                gpio::PinDriver,
+                i2c::{I2cConfig, I2cDriver},
+                i2s::{
+                    I2sDriver,
+                    config::{Config, DataBitWidth, SlotMode, StdClkConfig, StdConfig, StdGpioConfig, StdSlotConfig},
+                },
+                units::Hertz,
+            };
+            let remainder = Remainder {
+                #[cfg(not(feature = "boot-button"))]
+                gpio0: peripherals.pins.gpio0,
+                gpio2: peripherals.pins.gpio2,
+                gpio3: peripherals.pins.gpio3,
+                gpio6: peripherals.pins.gpio6,
+                gpio7: peripherals.pins.gpio7,
+                #[cfg(esp_idf_esp_console_usb_serial_jtag)]
+                gpio43: peripherals.pins.gpio43,
+                #[cfg(esp_idf_esp_console_usb_serial_jtag)]
+                gpio44: peripherals.pins.gpio44,
+                #[cfg(esp_idf_esp_console_usb_serial_jtag)]
+                uart0: peripherals.uart0,
+                uart1: peripherals.uart1,
+                i2c1: peripherals.i2c1,
+                spi3: peripherals.spi3,
+                rmt: peripherals.rmt,
+            };
+            // The bus of the audio codec and the microphones' ADC, and the header's, which more devices can join, see
+            // Esp32Platform::i2c.
+            let i2c = Arc::new(Mutex::new(I2cDriver::new(
+                peripherals.i2c0,
+                peripherals.pins.gpio11, // SDA
+                peripherals.pins.gpio10, // SCL
+                &I2cConfig::new().baudrate(Hertz(400_000)),
+            )?));
+            // The ES8311 codec, on that bus, given audio over I2S on MCLK 12, BCLK 13, WS 14 and DOUT 16, and its NS4150B
+            // amplifier, enabled by GPIO9. The microphones' ADC, the ES7210, on DIN 15, is not driven yet.
+            let speaker = {
+                // Silence when there is nothing to send, rather than the last audio again.
+                let config = StdConfig::new(
+                    Config::new().auto_clear(true),
+                    StdClkConfig::from_sample_rate_hz(crate::speaker::SAMPLE_RATE),
+                    StdSlotConfig::philips_slot_default(DataBitWidth::Bits16, SlotMode::Stereo),
+                    StdGpioConfig::default(),
+                );
+                let i2s = I2sDriver::new_std_tx(
+                    peripherals.i2s0,
+                    &config,
+                    peripherals.pins.gpio13,       // BCLK
+                    peripherals.pins.gpio16,       // DOUT
+                    Some(peripherals.pins.gpio12), // MCLK
+                    peripherals.pins.gpio14,       // WS
+                )?;
+                crate::speaker::Speaker::new(i2c.clone(), i2s, PinDriver::output(peripherals.pins.gpio9)?)?
+            };
+            // The displays' bus is driven through ESP-IDF's esp_lcd, by pin number, so its pins and SPI2 are not used
+            // here other than to keep them from the Remainder.
+            let _ = (
+                peripherals.spi2,
+                peripherals.pins.gpio8,
+                peripherals.pins.gpio38,
+                peripherals.pins.gpio39,
+                peripherals.pins.gpio40,
+                peripherals.pins.gpio41,
+                peripherals.pins.gpio42,
+                peripherals.pins.gpio45,
+                peripherals.pins.gpio46,
+                peripherals.pins.gpio47,
+                peripherals.pins.gpio48,
+            );
+            use crate::display::gc9a01_dual::{Gc9a01Dual, PanelPins, Pins};
+            let gc9a01 = Gc9a01Dual::new(Pins {
+                clock: 41,
+                mosi: 42,
+                dc: 45,
+                left: PanelPins {
+                    chip_select: 47,
+                    reset: 48,
+                    backlight: 46,
+                },
+                right: PanelPins {
+                    chip_select: 38,
+                    reset: 8,
+                    backlight: 39,
+                },
+            })?;
+            (remainder, i2c, speaker, gc9a01)
+        };
+
         // The SD card slot, mounted here, not in build, so that the card is there whatever else fails.
         #[cfg(all(feature = "board-guition-jc3248w535c", feature = "sd-card"))]
         let sd_card = crate::sd_card::mount_spi3(
@@ -1059,6 +1211,8 @@ impl Esp32PlatformBuilder {
             st7305,
             #[cfg(feature = "display-axs15231b")]
             axs15231b,
+            #[cfg(feature = "display-gc9a01-dual")]
+            gc9a01,
             #[cfg(feature = "key-button")]
             key_button,
             #[cfg(feature = "boot-button")]
@@ -1085,7 +1239,11 @@ impl Esp32PlatformBuilder {
         };
         // The screen's settings, and the backlight on, unless they say to keep it off: the AXS15231B's now that the
         // panel has a picture, see axs15231b.rs, the others' when the display starts, see screen_on.
-        #[cfg(any(feature = "display-axs15231b", feature = "mipi-dsi-display"))]
+        #[cfg(any(
+            feature = "display-axs15231b",
+            feature = "display-gc9a01-dual",
+            feature = "mipi-dsi-display"
+        ))]
         let builder = {
             let mut builder = builder;
             builder.internal_add_feature(Box::new(crate::features::screen::ScreenSettings), true)?;
@@ -1104,6 +1262,8 @@ impl Esp32PlatformBuilder {
             };
             #[cfg(feature = "display-axs15231b")]
             builder.axs15231b.set_backlight(on)?;
+            #[cfg(feature = "display-gc9a01-dual")]
+            builder.gc9a01.set_backlight(on)?;
             #[cfg(feature = "mipi-dsi-display")]
             {
                 builder.screen_on = on;
@@ -1131,8 +1291,12 @@ impl Esp32PlatformBuilder {
         Ok((builder, remainder))
     }
 
-    #[cfg(feature = "mipi-dsi-display")]
+    /// Which way up the display is. On the Waveshare ESP32-S3-DualEye-LCD-1.28, only Rotate0 or Rotate180, the board
+    /// turned half way round, see Gc9a01Dual::set_orientation.
+    #[cfg(any(feature = "mipi-dsi-display", feature = "display-gc9a01-dual"))]
     pub fn with_display_orientation(mut self, orientation: DisplayOrientation) -> anyhow::Result<Self> {
+        #[cfg(feature = "display-gc9a01-dual")]
+        self.gc9a01.set_orientation(orientation)?;
         self.orientation = orientation;
 
         Ok(self)
@@ -1476,6 +1640,14 @@ impl Esp32PlatformBuilder {
             };
             touch_driver = TouchDriver::start(self.touch_i2c)?;
         }
+        #[cfg(feature = "display-gc9a01-dual")]
+        {
+            display_manager = crate::display::gc9a01_dual::Gc9a01DualDisplayManager {
+                displays: self.gc9a01,
+                overlay: false,
+                generation: 0,
+            };
+        }
 
         #[cfg(feature = "display")]
         display_manager.set_status(&Status::Initializing(InitStatus::Starting))?;
@@ -1570,6 +1742,8 @@ impl Esp32PlatformBuilder {
         crate::display::st7305::spawn_flusher(&display_manager)?;
         #[cfg(feature = "display-axs15231b")]
         crate::display::axs15231b::spawn_flusher(&display_manager)?;
+        #[cfg(feature = "display-gc9a01-dual")]
+        crate::display::gc9a01_dual::spawn_flusher(&display_manager)?;
 
         Ok(Esp32PlatformRunner {
             platform: Esp32Platform {
@@ -1727,6 +1901,55 @@ impl Esp32Platform {
             api_server.get_bulk(&mut self.server_manager, uri, f)?;
         }
         Ok(())
+    }
+
+    /// Adds a handler for reading which needs access, see ApiServer::get_as, to the API, if it is running, so also over
+    /// plain HTTP, e.g. for what only those who manage the device may read.
+    #[cfg(esp_idf_esp_https_server_enable)]
+    pub fn api_get_as<F>(&mut self, uri: &str, access: crate::access::Access, f: F) -> anyhow::Result<()>
+    where
+        F: for<'r> Fn(
+                esp_idf_svc::http::server::Request<&mut esp_idf_svc::http::server::EspHttpConnection<'r>>,
+            ) -> anyhow::Result<()>
+            + Send
+            + Sync
+            + 'static,
+    {
+        if let Some(api_server) = self.api_server.as_mut() {
+            api_server.get_as(&mut self.server_manager, uri, access, f)?;
+        }
+        Ok(())
+    }
+
+    /// Adds a handler of POSTs which needs access, given the request's body, see ApiServer::post, to the API, if it is
+    /// running, over HTTPS only.
+    #[cfg(esp_idf_esp_https_server_enable)]
+    pub fn api_post<F>(&mut self, uri: &str, access: crate::access::Access, f: F) -> anyhow::Result<()>
+    where
+        F: for<'r> Fn(
+                esp_idf_svc::http::server::Request<&mut esp_idf_svc::http::server::EspHttpConnection<'r>>,
+                Vec<u8>,
+            ) -> anyhow::Result<()>
+            + Send
+            + 'static,
+    {
+        if let Some(api_server) = self.api_server.as_mut() {
+            api_server.post(uri, access, f)?;
+        }
+        Ok(())
+    }
+
+    /// Has authoriser decide the API requests in its scheme, e.g. those signed by the site's principals, see
+    /// access.rs; the adopting app's key goes on working alongside it.
+    #[cfg(esp_idf_esp_https_server_enable)]
+    pub fn set_authoriser(&self, authoriser: std::sync::Arc<dyn crate::access::Authoriser>) {
+        self.adoption.set_authoriser(authoriser);
+    }
+
+    /// The NVS partition, for firmware to keep what must not be on an SD card in a namespace of its own, e.g. a
+    /// private key.
+    pub fn nvs_partition(&self) -> esp_idf_svc::nvs::EspNvsPartition<esp_idf_svc::nvs::NvsDefault> {
+        self.nvs_partition.clone()
     }
 
     /// The device's ID, its Wi-Fi MAC address in hex, e.g. 441bf6cc7fcc, which the app knows it by, see identity.rs,
@@ -1965,7 +2188,7 @@ impl Esp32Platform {
         {
             let nvs_partition = self.nvs_partition.clone();
             let firmware = self.firmware;
-            self.api_get("/api/starts", move |request| {
+            self.api_get_as("/api/starts", crate::access::Access::Manage, move |request| {
                 let mut response = request.into_response(200, None, &[("Content-Type", "application/json")])?;
                 crate::starts::write_json(&nvs_partition, firmware, &mut |bytes| {
                     Ok(esp_idf_svc::io::Write::write_all(&mut response, bytes)?)

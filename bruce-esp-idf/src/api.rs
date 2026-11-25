@@ -14,7 +14,10 @@
 //! Features add their own, e.g. the data they capture, with on, or, for reading, with get, which also serves it over
 //! plain HTTP, on port 80, for requests signed with the key, see Adoption::is_signed, as HTTPS needs RAM the device may
 //! not have to spare while it is polling over HTTPS itself. /api/info is on port 80 too. Once the device has been
-//! adopted, every request but /api/info and adoption's needs the adopting app's key, see Adoption::is_authorised.
+//! adopted, every request but /api/info and adoption's needs the adopting app's key, or, if the firmware has given the
+//! platform an authoriser, its say, e.g. for a request signed by one of the site's principals, see Adoption::check and
+//! access.rs. Each handler says what access it needs: reading the device's data, as the features' get and get_bulk
+//! do, or managing it, as the rest do.
 
 use std::sync::Arc;
 
@@ -28,6 +31,7 @@ use log::info;
 use serde_json::{Value, json};
 
 use crate::Firmware;
+use crate::access::Access;
 use crate::adoption::{Adoption, PAIRING_TIME};
 use crate::http::EspHttpServerManager;
 use crate::identity::DeviceIdentity;
@@ -133,9 +137,10 @@ impl ApiServer {
         })?;
 
         let release_adoption = adoption.clone();
-        server.fn_handler("/api/release", Method::Post, move |request| {
-            if !authorised(&release_adoption, &request) {
-                return unauthorised(request);
+        server.fn_handler("/api/release", Method::Post, move |mut request| {
+            let body = read_body(&mut request)?;
+            if let Err(error) = check(&release_adoption, &request, &body, Access::Manage, true) {
+                return unauthorised(request, &error);
             }
             match release_adoption.release() {
                 Ok(()) => respond(request, 200, &json!({ "adopted": false })),
@@ -146,8 +151,8 @@ impl ApiServer {
         let get_config = config_manager.clone();
         let get_adoption = adoption.clone();
         server.fn_handler("/api/config", Method::Get, move |request| {
-            if !authorised(&get_adoption, &request) {
-                return unauthorised(request);
+            if let Err(error) = check(&get_adoption, &request, &[], Access::Manage, true) {
+                return unauthorised(request, &error);
             }
             respond(request, 200, &get_config.to_json())
         })?;
@@ -155,10 +160,11 @@ impl ApiServer {
         let post_config = config_manager;
         let post_adoption = adoption.clone();
         server.fn_handler("/api/config", Method::Post, move |mut request| {
-            if !authorised(&post_adoption, &request) {
-                return unauthorised(request);
+            let body = read_body(&mut request)?;
+            if let Err(error) = check(&post_adoption, &request, &body, Access::Manage, true) {
+                return unauthorised(request, &error);
             }
-            let update = match read_json(&mut request) {
+            let update = match serde_json::from_slice::<Value>(&body).map_err(anyhow::Error::from) {
                 Ok(update) => update,
                 Err(error) => return respond(request, 400, &json!({ "error": format!("{error:#}") })),
             };
@@ -177,16 +183,17 @@ impl ApiServer {
 
         let memory_adoption = adoption.clone();
         server.fn_handler("/api/memory", Method::Get, move |request| {
-            if !authorised(&memory_adoption, &request) {
-                return unauthorised(request);
+            if let Err(error) = check(&memory_adoption, &request, &[], Access::Manage, true) {
+                return unauthorised(request, &error);
             }
             respond(request, 200, &crate::memory::to_json())
         })?;
 
         let restart_adoption = adoption.clone();
-        server.fn_handler("/api/restart", Method::Post, move |request| {
-            if !authorised(&restart_adoption, &request) {
-                return unauthorised(request);
+        server.fn_handler("/api/restart", Method::Post, move |mut request| {
+            let body = read_body(&mut request)?;
+            if let Err(error) = check(&restart_adoption, &request, &body, Access::Manage, true) {
+                return unauthorised(request, &error);
             }
             respond(request, 200, &json!({ "restarting": true }))?;
             // After the response has gone.
@@ -220,25 +227,60 @@ impl ApiServer {
         &self.adoption
     }
 
-    /// Adds a handler, e.g. for a feature's data, whose uri should start /api/, which, once the device has been
-    /// adopted, is only called for requests with the adopting app's key.
-    pub fn on<F>(&mut self, uri: &str, method: Method, f: F) -> anyhow::Result<&mut Self>
+    /// Adds a handler which needs access, e.g. for a feature's data, whose uri should start /api/, which, once the
+    /// device has been adopted, is only called for requests which may, see Adoption::check. The request is checked as
+    /// having no body, so it is for a GET, or a POST without one; see post for one with.
+    pub fn on<F>(&mut self, uri: &str, method: Method, access: Access, f: F) -> anyhow::Result<&mut Self>
     where
         F: for<'r> Fn(Request<&mut EspHttpConnection<'r>>) -> anyhow::Result<()> + Send + 'static,
     {
         let adoption = self.adoption.clone();
         self.server.fn_handler(uri, method, move |request| {
-            if !authorised(&adoption, &request) {
-                return unauthorised(request);
+            if let Err(error) = check(&adoption, &request, &[], access, true) {
+                return unauthorised(request, &error);
             }
             f(request)
         })?;
         Ok(self)
     }
 
-    /// Adds a handler for reading, see on, which is also served over plain HTTP, by http, for requests signed with the
-    /// adopting app's key, see Adoption::is_signed.
+    /// Adds a handler of POSTs which needs access, see on, given the request's body, read first, up to MAX_BODY, as a
+    /// signed request's signature covers it.
+    pub fn post<F>(&mut self, uri: &str, access: Access, f: F) -> anyhow::Result<&mut Self>
+    where
+        F: for<'r> Fn(Request<&mut EspHttpConnection<'r>>, Vec<u8>) -> anyhow::Result<()> + Send + 'static,
+    {
+        let adoption = self.adoption.clone();
+        self.server.fn_handler(uri, Method::Post, move |mut request| {
+            let body = match read_body(&mut request) {
+                Ok(body) => body,
+                Err(error) => return respond(request, 400, &json!({ "error": format!("{error:#}") })),
+            };
+            if let Err(error) = check(&adoption, &request, &body, access, true) {
+                return unauthorised(request, &error);
+            }
+            f(request, body)
+        })?;
+        Ok(self)
+    }
+
+    /// Adds a handler for reading the device's data, see get_as.
     pub fn get<F>(&mut self, http: &mut EspHttpServerManager<'static>, uri: &str, f: F) -> anyhow::Result<&mut Self>
+    where
+        F: for<'r> Fn(Request<&mut EspHttpConnection<'r>>) -> anyhow::Result<()> + Send + Sync + 'static,
+    {
+        self.get_as(http, uri, Access::Read, f)
+    }
+
+    /// Adds a handler for reading which needs access, see on, which is also served over plain HTTP, by http, for
+    /// requests signed with the adopting app's key, or which the authoriser allows, see Adoption::check.
+    pub fn get_as<F>(
+        &mut self,
+        http: &mut EspHttpServerManager<'static>,
+        uri: &str,
+        access: Access,
+        f: F,
+    ) -> anyhow::Result<&mut Self>
     where
         F: for<'r> Fn(Request<&mut EspHttpConnection<'r>>) -> anyhow::Result<()> + Send + Sync + 'static,
     {
@@ -246,12 +288,12 @@ impl ApiServer {
         let adoption = self.adoption.clone();
         let signed = f.clone();
         http.on(uri, Method::Get, move |request| {
-            if !adoption.is_signed("GET", request.uri(), request.header("Authorization")) {
-                return unauthorised(request);
+            if let Err(error) = check(&adoption, &request, &[], access, false) {
+                return unauthorised(request, &error);
             }
             signed(request)
         })?;
-        self.on(uri, Method::Get, move |request| f(request))
+        self.on(uri, Method::Get, access, move |request| f(request))
     }
 
     /// Adds a handler for reading which may take a while, e.g. a page of a store's change feed, as get does, but served
@@ -278,16 +320,41 @@ impl ApiServer {
     }
 }
 
-fn authorised(adoption: &Adoption, request: &Request<&mut EspHttpConnection<'_>>) -> bool {
-    adoption.is_authorised(request.header("Authorization"))
+/// Ok if the request, with body, may do what access says, over HTTPS if https, see Adoption::check.
+fn check(
+    adoption: &Adoption,
+    request: &Request<&mut EspHttpConnection<'_>>,
+    body: &[u8],
+    access: Access,
+    https: bool,
+) -> anyhow::Result<()> {
+    let method = match request.method() {
+        Method::Get => "GET",
+        Method::Post => "POST",
+        Method::Put => "PUT",
+        Method::Delete => "DELETE",
+        _ => "OTHER",
+    };
+    adoption.check(
+        method,
+        request.uri(),
+        request.header("Authorization"),
+        body,
+        access,
+        https,
+    )
 }
 
-pub(crate) fn unauthorised(request: Request<&mut EspHttpConnection<'_>>) -> anyhow::Result<()> {
-    respond(
-        request,
-        401,
-        &json!({ "error": "the device has been adopted, and this needs the adopting app's key" }),
-    )
+/// Says that the request may not do what it asked, and why, as error says, which tells nothing secret: 403 if it was
+/// signed by someone who may not, see access::Forbidden, otherwise 401, as who asked is not known.
+pub(crate) fn unauthorised(request: Request<&mut EspHttpConnection<'_>>, error: &anyhow::Error) -> anyhow::Result<()> {
+    log::warn!("Refused {}, {error:#}", request.uri());
+    let status = if error.downcast_ref::<crate::access::Forbidden>().is_some() {
+        403
+    } else {
+        401
+    };
+    respond(request, status, &json!({ "error": format!("{error:#}") }))
 }
 
 /// What the device is: its ID, board, firmware, certificate fingerprint, whether it has been adopted, how long it has
@@ -317,6 +384,8 @@ fn info(
         "platform": { "name": env!("CARGO_PKG_NAME"), "version": env!("CARGO_PKG_VERSION") },
         "certificateFingerprint": identity.fingerprint,
         "adopted": adoption.is_adopted(),
+        // Who the device is in its site, if the firmware has an authoriser, see access.rs.
+        "security": adoption.authoriser_info(),
         "upTimeSeconds": unsafe { crate::sys::esp_timer_get_time() } / 1_000_000,
         "resetReason": crate::reset_reason(),
         // Where the slow reads are served, see ApiServer::get_bulk; on the HTTP port if there is none.
@@ -331,6 +400,11 @@ fn info(
 }
 
 fn read_json(request: &mut Request<&mut EspHttpConnection<'_>>) -> anyhow::Result<Value> {
+    Ok(serde_json::from_slice(&read_body(request)?)?)
+}
+
+/// The request's body, up to MAX_BODY.
+fn read_body(request: &mut Request<&mut EspHttpConnection<'_>>) -> anyhow::Result<Vec<u8>> {
     let mut body = Vec::new();
     let mut buffer = [0u8; 512];
     loop {
@@ -343,7 +417,7 @@ fn read_json(request: &mut Request<&mut EspHttpConnection<'_>>) -> anyhow::Resul
         }
         body.extend_from_slice(&buffer[..read]);
     }
-    Ok(serde_json::from_slice(&body)?)
+    Ok(body)
 }
 
 pub fn respond(request: Request<&mut EspHttpConnection<'_>>, status: u16, json: &Value) -> anyhow::Result<()> {

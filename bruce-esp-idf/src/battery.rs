@@ -1,7 +1,7 @@
 //! The board's battery, e.g. the Waveshare ESP32-S3-RLCD-4.2's 18650 cell, whose voltage, through a divider which
 //! makes it a third, is read on an ADC pin, GPIO4, ADC1's channel 3, as Waveshare's 03_ADC_Test example reads it, see
-//! Esp32Platform::battery. The Waveshare ESP32-S3-LCD-1.47B's divider, 200K over 100K, makes it a third too, read on
-//! GPIO1, ADC1's channel 0.
+//! Esp32Platform::battery. The Waveshare ESP32-S3-LCD-1.47B's and ESP32-S3-DualEye-LCD-1.28's dividers, 200K over
+//! 100K, make it a third too, read on GPIO1, ADC1's channel 0.
 //!
 //! The voltage says roughly how charged the cell is, see percent, but not exactly: it is higher while it charges and
 //! lower under load, and with no cell at all the charger's own voltage is read on USB, which looks like a full one.
@@ -14,7 +14,7 @@ use esp_idf_hal::adc::oneshot::{AdcChannelDriver, AdcDriver};
 /// The board's battery pin, see the module comment.
 #[cfg(feature = "board-wave-esp32s3-rlcd-42")]
 pub type BatteryPin = esp_idf_hal::gpio::Gpio4<'static>;
-#[cfg(feature = "board-wave-esp32s3-lcd-147")]
+#[cfg(any(feature = "board-wave-esp32s3-lcd-147", feature = "board-wave-esp32s3-dualeye-128"))]
 pub type BatteryPin = esp_idf_hal::gpio::Gpio1<'static>;
 use esp_idf_sys::EspError;
 

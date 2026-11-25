@@ -1,5 +1,7 @@
 #[cfg(feature = "display-axs15231b")]
 pub mod axs15231b;
+#[cfg(feature = "display-gc9a01-dual")]
+pub mod gc9a01_dual;
 #[cfg(feature = "mipi-dsi-display")]
 pub mod mipi_dsi_display_manager;
 #[cfg(feature = "display-st7305")]
@@ -10,6 +12,8 @@ pub mod st7305;
 pub type BoardDisplayManager = mipi_dsi_display_manager::MipiDsiDisplayManager;
 #[cfg(feature = "display-st7305")]
 pub type BoardDisplayManager = st7305::St7305DisplayManager;
+#[cfg(feature = "display-gc9a01-dual")]
+pub type BoardDisplayManager = gc9a01_dual::Gc9a01DualDisplayManager;
 #[cfg(feature = "display-axs15231b")]
 pub type BoardDisplayManager = axs15231b::Axs15231bDisplayManager;
 

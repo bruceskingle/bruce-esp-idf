@@ -85,6 +85,8 @@ pub struct Speaker {
     inner: Arc<Mutex<Inner>>,
     /// In percent, see set_volume.
     volume: Arc<AtomicU8>,
+    /// What the Speaker feature's volume slider plays, see set_preview_wav, None for a beep.
+    preview: Arc<Mutex<Option<Arc<Vec<i16>>>>>,
 }
 
 impl Speaker {
@@ -108,7 +110,8 @@ impl Speaker {
         info!("Speaker started");
         Ok(Speaker {
             inner: Arc::new(Mutex::new(Inner { i2c, i2s, amplifier })),
-            volume: Arc::new(AtomicU8::new(100)),
+            volume: Arc::new(AtomicU8::new(crate::features::speaker_settings::DEFAULT_VOLUME)),
+            preview: Arc::new(Mutex::new(None)),
         })
     }
 
@@ -151,6 +154,22 @@ impl Speaker {
         }
         inner.amplifier.set_low()?;
         Ok(result?)
+    }
+
+    /// Makes the Speaker feature's volume slider play a WAV file's audio, see wav_samples, at each volume it is moved
+    /// to, rather than a beep, so that the volume can be judged by a sound the firmware plays, e.g. its startup chime.
+    pub fn set_preview_wav(&self, wav: &[u8]) -> anyhow::Result<()> {
+        *self.preview.lock().unwrap() = Some(Arc::new(wav_samples(wav)?));
+        Ok(())
+    }
+
+    /// Plays what the volume slider plays, see set_preview_wav, at volume, in percent.
+    pub fn preview(&self, volume: u8) -> anyhow::Result<()> {
+        let preview = self.preview.lock().unwrap().clone();
+        match preview {
+            Some(samples) => self.play_at(volume, &samples),
+            None => self.play_at(volume, &tone(880.0, Duration::from_millis(120))),
+        }
     }
 
     /// Plays a WAV file's audio, e.g. one built into the firmware with include_bytes!, at the volume, see wav_samples.

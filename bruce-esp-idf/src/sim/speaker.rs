@@ -15,7 +15,7 @@ pub struct Speaker {
 impl Default for Speaker {
     fn default() -> Self {
         Speaker {
-            volume: Arc::new(AtomicU8::new(100)),
+            volume: Arc::new(AtomicU8::new(crate::features::speaker_settings::DEFAULT_VOLUME)),
         }
     }
 }
@@ -47,6 +47,14 @@ impl Speaker {
 
     pub fn play_tone(&self, frequency: f32, duration: Duration) -> anyhow::Result<()> {
         self.play(&tone(frequency, duration))
+    }
+
+    pub fn set_preview_wav(&self, _wav: &[u8]) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    pub fn preview(&self, volume: u8) -> anyhow::Result<()> {
+        self.play_at(volume, &tone(880.0, Duration::from_millis(120)))
     }
 }
 

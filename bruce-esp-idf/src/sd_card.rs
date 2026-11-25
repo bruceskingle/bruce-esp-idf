@@ -161,16 +161,18 @@ pub fn mount_spi3(
 }
 
 /// Mounts the card of a board whose slot is wired for the SDMMC host, with one data line, as the Waveshare
-/// ESP32-S3-RLCD-4.2's is, on GPIO21 (CMD), 38 (CLK) and 39 (D0).
-#[cfg(feature = "board-wave-esp32s3-rlcd-42")]
+/// ESP32-S3-RLCD-4.2's is, on GPIO21 (CMD), 38 (CLK) and 39 (D0), and the ESP32-S3-DualEye-LCD-1.28's, on GPIO21 (CMD),
+/// 17 (CLK) and 18 (D0).
+#[cfg(any(feature = "board-wave-esp32s3-rlcd-42", feature = "board-wave-esp32s3-dualeye-128"))]
 pub fn mount_mmc(
     slot: esp_idf_hal::sd::mmc::SDMMC1<'static>,
-    cmd: esp_idf_hal::gpio::Gpio21<'static>,
-    clk: esp_idf_hal::gpio::Gpio38<'static>,
-    d0: esp_idf_hal::gpio::Gpio39<'static>,
+    cmd: impl esp_idf_hal::gpio::OutputPin + 'static,
+    clk: impl esp_idf_hal::gpio::OutputPin + 'static,
+    d0: impl esp_idf_hal::gpio::InputPin + esp_idf_hal::gpio::OutputPin + 'static,
 ) -> anyhow::Result<()> {
     use esp_idf_hal::sd::mmc::{SdMmcHostConfiguration, SdMmcHostDriver};
-    // The slot has no card detect or write protect lines. The ESP32's own pull-ups, as the board has none.
+    // The slot has no card detect or write protect lines. The ESP32's own pull-ups too, as the RLCD has none; the
+    // DualEye has its own, 10K.
     let host = SdMmcHostDriver::new_1bit(
         slot,
         cmd,

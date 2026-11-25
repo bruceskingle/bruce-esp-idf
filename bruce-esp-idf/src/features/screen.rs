@@ -1,7 +1,8 @@
 //! The screen's settings: whether to keep it off, e.g. on a board run headless whose panel is broken. A setting, rather
 //! than a choice made when the firmware is built, so that the screen is on unless a device is told otherwise. The
-//! platform adds it on a board whose backlight it drives, see the display-axs15231b and mipi-dsi-display features, e.g.
-//! the Guition JC3248W535C and the CYD, and applies it as the board starts, see Esp32PlatformBuilder.
+//! platform adds it on a board whose backlight it drives, see the display-axs15231b, display-gc9a01-dual and
+//! mipi-dsi-display features, e.g. the Guition JC3248W535C, the Waveshare ESP32-S3-DualEye-LCD-1.28, both its screens,
+//! and the CYD, and applies it as the board starts, see Esp32PlatformBuilder.
 
 use bruce_embedded_std::config::{ConfigSpec, ConfigSpecValue, FeatureConfig, TypedValue};
 
